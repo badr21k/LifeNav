@@ -18,21 +18,26 @@ class User {
       return $rows;
     }
 
-    public function authenticate($username, $password) {
+    public function authenticate($email, $password) {
         /*
-         * if username and password good then
+         * if email and password good then
          * $this->auth = true;
          */
-		$username = strtolower($username);
+		$email = strtolower($email);
 		$db = db_connect();
-        $statement = $db->prepare("select * from users WHERE username = :name;");
-        $statement->bindValue(':name', $username);
+        $statement = $db->prepare("select * from users WHERE email = :email;");
+        $statement->bindValue(':email', $email);
         $statement->execute();
         $rows = $statement->fetch(PDO::FETCH_ASSOC);
-		
-		if (password_verify($password, $rows['password'])) {
-			$_SESSION['auth'] = 1;
-			$_SESSION['username'] = ucwords($username);
+
+		if ($rows && password_verify($password, $rows['password_hash'])) {
+			$_SESSION['auth'] = [
+				'id' => $rows['id'],
+				'tenant_id' => $rows['tenant_id'],
+				'name' => $rows['name'],
+				'email' => $rows['email'],
+				'role' => $rows['role']
+			];
 			unset($_SESSION['failedAuth']);
 			header('Location: /home');
 			die;

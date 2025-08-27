@@ -13,8 +13,8 @@
 		<form action="/login/verify" method="post" >
 		<fieldset>
 			<div class="form-group">
-				<label for="username">Username</label>
-				<input required type="text" class="form-control" name="username">
+				<label for="email">Email</label>
+				<input required type="email" class="form-control" name="email">
 			</div>
 			<div class="form-group">
 				<label for="password">Password</label>

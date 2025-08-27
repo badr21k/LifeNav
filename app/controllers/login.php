@@ -7,11 +7,11 @@ class Login extends Controller {
     }
     
     public function verify(){
-			$username = $_REQUEST['username'];
+			$email = $_REQUEST['email'];
 			$password = $_REQUEST['password'];
 		
 			$user = $this->model('User');
-			$user->authenticate($username, $password); 
+			$user->authenticate($email, $password); 
     }
 
 }
