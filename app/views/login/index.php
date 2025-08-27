@@ -22,6 +22,8 @@
 			</div>
             <br>
 		    <button type="submit" class="btn btn-primary">Login</button>
+			<p class="mt-3">No account yet? <a href="/register">Create one</a>.</p>
+
 		</fieldset>
 		</form> 
 	</div>
