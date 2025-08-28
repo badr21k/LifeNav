@@ -1,18 +1,17 @@
+
 <?php
 
 class Home extends Controller {
 
     public function index() {
+      // if logged in, go to lifenav
       if (isset($_SESSION['auth'])) {
         header('Location: /lifenav');
         exit;
       }
 
-      $user = $this->model('User');
-      $data = $user->test();
-			
-	    $this->view('home/index');
-	    die;
+      // if not logged in, go to login page
+      header('Location: /login');
+      exit;
     }
-
 }
