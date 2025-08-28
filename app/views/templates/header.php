@@ -44,7 +44,21 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           <a class="nav-link<?= $active('home') ?>" href="/home">Home</a>
         </li>
 
-        <!-- Essentials module -->
+        <!-- LifeNav module -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle<?= $ctrl === 'lifenav' ? ' active' : '' ?>" href="#"
+             id="navLifeNav" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            LifeNav
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navLifeNav">
+            <li><a class="dropdown-item<?= $active('lifenav','index') ?>" href="/lifenav/normal">Normal Mode</a></li>
+            <li><a class="dropdown-item<?= $active('lifenav','travel') ?>" href="/lifenav/travel">Travel Mode</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item<?= $active('lifenav','reports_monthly') ?>" href="/lifenav/reports/monthly">Reports</a></li>
+          </ul>
+        </li>
+
+        <!-- Essentials module (legacy) -->
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle<?= $ctrl === 'essentials' ? ' active' : '' ?>" href="#"
              id="navEssentials" role="button" data-bs-toggle="dropdown" aria-expanded="false">
