@@ -1,6 +1,22 @@
 
 <?php
 
+function csrf_field() {
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($_SESSION['csrf_token']) . '">';
+}
+
+function csrf_verify() {
+    $token = $_POST['csrf_token'] ?? '';
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+        $_SESSION['flash_error'] = 'Invalid security token.';
+        header('Location: /home');
+        exit;
+    }
+}
+
 function db(): PDO {
     static $pdo = null;
     
