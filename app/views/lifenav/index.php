@@ -36,7 +36,7 @@
             <div class="card-body">
                 <?php
                 $categories = [];
-                $st = db_connect()->prepare("SELECT * FROM app_categories WHERE tab_id = ? AND (is_custom = 0 OR user_id = ?) AND is_active = 1 ORDER BY is_custom, name");
+                $st = db()->prepare("SELECT * FROM categories WHERE tab_id = ? AND (is_custom = 0 OR user_id = ?) AND active = 1 ORDER BY is_custom, name");
                 $st->execute([$tab['id'], $userId]);
                 $categories = $st->fetchAll();
                 
