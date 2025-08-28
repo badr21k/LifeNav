@@ -1,7 +1,7 @@
 <?php
 class mode extends Controller {
 
-  private function db(){ return db(); }
+  private function db(){ return db_connect(); }
   private function user(){
     if (!isset($_SESSION['auth'])) { header('Location: /login'); exit; }
     $st=$this->db()->prepare("SELECT * FROM users WHERE id=? LIMIT 1");

@@ -28,29 +28,3 @@ class Entry {
         return $st->fetchAll();
     }
 }
-<?php
-require_once __DIR__ . '/../core/database.php';
-
-class Entry {
-    public static function getByRow(int $rowId, int $limit = 20): array {
-        $st = db()->prepare("
-            SELECT * FROM entries 
-            WHERE row_id = ? 
-            ORDER BY created_at DESC 
-            LIMIT ?
-        ");
-        $st->execute([$rowId, $limit]);
-        return $st->fetchAll();
-    }
-    
-    public static function getTotalByRow(int $rowId): int {
-        $st = db()->prepare("
-            SELECT COALESCE(SUM(amount_cents), 0) as total 
-            FROM entries 
-            WHERE row_id = ?
-        ");
-        $st->execute([$rowId]);
-        $result = $st->fetch();
-        return (int)$result['total'];
-    }
-}
