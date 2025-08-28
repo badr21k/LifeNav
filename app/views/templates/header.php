@@ -43,43 +43,14 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         <li class="nav-item">
           <a class="nav-link<?= $active('home') ?>" href="/home">Home</a>
         </li>
-        
 
-        <!-- LifeNav module -->
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle<?= $ctrl === 'lifenav' ? ' active' : '' ?>" href="#"
-             id="navLifeNav" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            LifeNav
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="navLifeNav">
-            <li><a class="dropdown-item<?= $active('lifenav','index') ?>" href="/lifenav/normal">Normal Mode</a></li>
-            <li><a class="dropdown-item<?= $active('lifenav','travel') ?>" href="/lifenav/travel">Travel Mode</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item<?= $active('lifenav','reports_monthly') ?>" href="/lifenav/reports/monthly">Reports</a></li>
-          </ul>
-        </li>
 
-        <!-- Essentials module (legacy) -->
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle<?= $ctrl === 'essentials' ? ' active' : '' ?>" href="#"
-             id="navEssentials" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Essentials
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="navEssentials">
-            <li><a class="dropdown-item<?= $active('essentials','index') ?>" href="/essentials">List</a></li>
-            <li><a class="dropdown-item<?= $active('essentials','create') ?>" href="/essentials/create">Add expense</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item<?= $active('essentials','import') ?>" href="/essentials/import">Import CSV</a></li>
-            <li><a class="dropdown-item<?= $active('essentials','reports_monthly') ?>" href="/essentials/reports/monthly">Monthly totals</a></li>
-            <li><a class="dropdown-item<?= $active('essentials','reports_trend') ?>" href="/essentials/reports/trend">Trend</a></li>
-          </ul>
-        </li>
+        <!-- Essentials module -->
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
         <li class="nav-item">
-          <a class="nav-link<?= $active('about') ?>" href="/about">About</a>
+          <a class="nav-link<?= $active('essentials') ?>" href="/essentials">Essentials</a>
         </li>
-
-      </ul>
 
       <!-- Right -->
       <div class="d-flex align-items-center">

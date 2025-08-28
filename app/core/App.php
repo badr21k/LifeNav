@@ -8,7 +8,7 @@ class App {
     protected $params = [];
 
     public function __construct() {
-        if (isset($_SESSION['auth'])) {
+        if (isset($_SESSION['auth']) == 1) {
             //$this->method = 'index';
             $this->controller = 'home';
         } 

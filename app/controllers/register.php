@@ -72,10 +72,10 @@ class register extends Controller {
         'email' => $email,
         'role' => 'user'
       ];
-      $_SESSION['controller'] = 'lifenav';
+      $_SESSION['controller'] = 'home';
       $_SESSION['method'] = 'index';
 
-      header('Location: /lifenav'); exit;
+      header('Location: /home'); exit;
 
     } catch (Throwable $e) {
       if ($dbh->inTransaction()) $dbh->rollBack();
