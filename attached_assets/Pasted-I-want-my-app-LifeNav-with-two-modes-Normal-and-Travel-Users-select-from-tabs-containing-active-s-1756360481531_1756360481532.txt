@@ -1,0 +1,357 @@
+I want my app LifeNav with two modes (Normal and Travel). Users select from tabs containing active selectable options (predefined categories; users can also add custom ones where applicable). Every selection creates a persistent row per user+category that is reused forever (not new rows each time). The app must support multi-currency with visual currency switch markers in graphs. Include all details below. my app is builded on replit with php i use this shema:
+app/
+├─ controllers/
+│  ├─ create.php
+│  ├─ essentials.php
+│  ├─ home.php
+│  ├─ login.php
+│  ├─ logout.php
+│  ├─ register.php
+│  └─ secret.php
+├─ core/
+│  ├─ App.php
+│  ├─ config.php
+│  ├─ Controller.php
+│  └─ security.php
+├─ models/
+│  ├─ Category.php
+│  ├─ Expense.php
+│  ├─ ExpenseTag.php
+│  ├─ MonthlyExpenseTotal.php
+│  ├─ PaymentMethod.php
+│  ├─ Subcategory.php
+│  ├─ Tag.php
+│  └─ User.php
+└─ views/
+   └─ essentials/
+      ├─ create.php
+      ├─ edit.php
+      ├─ import.php
+      ├─ index.php
+      └─ reports_monthly.php
+.git/
+
+
+# 1) Selectable lists (tabs → categories)
+
+Include **Other** in every tab. Users may add **custom categories** under any tab.
+
+## Normal mode
+
+**Transportation**
+
+* Car purchase/loan; Car insurance; Fuel (gas/electric/hybrid); Maintenance (oil, tires, inspections); Repairs; Parts & accessories; Registration/licensing; Roadside assistance; Tolls; Parking (street/garage/monthly); Public transit (fares/passes); Rideshare/taxi; Bike/scooter (purchase/maintenance); Car wash/detailing; Car membership/car-share; Driver’s license renewals; Fines; **Other**
+
+**Accommodation / Housing**
+
+* Rent; Mortgage; Property taxes; Home/tenant insurance; Electricity; Heating/Hydro; Water/Sewer; Garbage/Recycling fees; Internet; Cable/Streaming for home; Mobile/landline; HOA/condo fees; Security system; Pest control; Cleaning services; Repairs/maintenance; Renovations; Furniture; Appliances; Tools; Storage unit; Moving costs; Landscaping/snow removal; **Other**
+
+**Entertainment & Leisure**
+
+* Dining out; Cafes; Snacks/treats; Movies; Concerts; Theater; Museums; Sports events; Activity fees (bowling, mini-golf, escape rooms); Subscriptions (Netflix/Spotify/etc.); Gaming (games/DLC/in-app); Hobbies/crafts; Books/e-books/audiobooks; Streaming rentals/PPV; Nightlife (bars/clubs); Events/festivals; Photography/gear; Courses/workshops (non-essential); Gifts (non-essential); **Other**
+
+**Health & Wellness**
+
+* Gym membership; Fitness classes (yoga, pilates, martial arts); Personal training/coaching; Home fitness equipment; Medicines; Vitamins/supplements; Prescriptions; Pharmacy fees; GP/Family doctor; Specialists; Hospital/ER; Urgent care/clinics; Dental (cleaning, fillings, ortho); Vision (exams, glasses, contacts, surgery); Hearing (exams, aids); Mental health (therapy/counseling); Physiotherapy; Chiropractor; Massage therapy; Acupuncture; Alternative/naturopathy; Lab tests; Medical devices (BP cuff, glucose monitor); Health insurance premiums; Travel vaccines; **Other**
+
+**Essentials**
+
+* Groceries; Household supplies; Toiletries/personal care; Laundry/dry cleaning; Baby supplies (diapers, formula); School supplies; Tuition/fees (essential); Childcare/babysitting; Transportation passes required for work/school; Pet food/basic care; Basic clothing/shoes; Work uniforms/tools; Cloud storage/phone plan essential tier; Banking fees; Taxes/filing fees; Postage/shipping essentials; Community dues/obligatory fees; **Other**
+
+**Non-Essentials**
+
+* **Memberships (recurring; auto-count monthly):** Clubs (golf/social); Premium streaming; Subscription boxes (beauty/wine/merch); Premium apps; Creator memberships/patreon; Magazines/newspapers; Specialty gyms; VIP programs; Game passes; **Other**
+* **Non-Memberships (one-time):** Fashion & accessories; Designer items; Luxury electronics/gadgets; Collectibles; Hobbies/special gear; Décor; Non-essential gifts; Travel splurges; Event splurges; Cosmetics/luxury care; Impulse buys; **Other**
+
+  * For Non-Memberships: user enters **Item name**, **Amount**, **Note**.
+
+## Travel mode
+
+**Transportation (Travel)**
+
+* Flights (domestic/international); Trains; Buses/coaches; Shuttles; Car rental; Fuel; Taxis/rideshare; Ferries/boats; Cruises; City transport passes/cards; Baggage fees; Seat/upgrade fees; Airport parking; Tolls; Travel insurance (transport); **Other**
+
+**Accommodation (Travel)**
+
+* Hotels; Hostels; Guesthouses; Vacation rentals (Airbnb); Resorts; Motels; Campsites; Overnight trains/boats; Day rooms; Resort fees; City/lodging taxes; **Other**
+
+**Food & Dining (Travel)**
+
+* Restaurants; Cafes; Street food; Groceries; Delivery/apps; Room service; Snacks; Water/beverages; Specialty dining/experiences; **Other**
+
+**Entertainment & Activities (Travel)**
+
+* Tours (city, cultural, adventure); Landmarks/museums; Theme/amusement parks; Beaches/pool passes; Outdoor (hiking, diving, skiing); Gear rental; Shows/concerts/nightlife; Classes/workshops; Souvenirs/shopping; Photography permits; Local SIM/roaming for apps; **Other**
+
+**Essentials (Travel)**
+
+* Visas/passport fees; Currency exchange/ATM/bank fees; SIM/eSIM/roaming plans; Travel health insurance; Travel meds/vaccines; Safety gear; Emergency fund; Luggage/locks; Power adapters; Local transport cards; Data backups/cloud while traveling; **Other**
+
+# 2) Data model (MySQL-ready)
+
+**Guiding keys**
+
+* Persistent row: **(user\_id, mode, tab\_id, category\_id)** unique.
+* Multi-currency: user can change active currency; each entry stores its currency; snapshots store per-currency subtotals.
+
+> Types: `ENUM('normal','travel')` for mode (or tinyint), `CHAR(3)` ISO currency, monetary as **cents** (INT/BIGINT). All tables have `created_at`/`updated_at`.
+
+### `users`
+
+* `id` PK
+* `email` UNIQUE, `name`
+* `tz` IANA timezone (e.g., `America/Toronto`)
+* `active_currency` `CHAR(3)` (current selection)
+* auth fields (password\_hash, etc.)
+
+### `tabs`
+
+* `id` PK
+* `mode` ENUM('normal','travel')
+* `name` (e.g., “Transportation”)
+* `sort`
+
+### `categories`
+
+* `id` PK
+* `tab_id` FK → tabs
+* `name`
+* `is_custom` TINYINT(1) (0 system / 1 user-added)
+* `user_id` NULLABLE (owner for custom)
+* `active` TINYINT(1)
+
+### `user_category_rows`  ← **the single persistent row**
+
+* `id` PK
+* `user_id` FK → users
+* `mode` ENUM('normal','travel')
+* `tab_id` FK → tabs
+* `category_id` FK → categories
+* `is_active` TINYINT(1) default 1  (soft delete when user removes it)
+* **running totals**
+
+  * `open_month_ym` CHAR(7)  (e.g., `2025-08`, the month currently accumulating)
+  * `current_total_cents` BIGINT NOT NULL DEFAULT 0
+  * `current_entry_count` INT NOT NULL DEFAULT 0
+  * `lifetime_total_cents` BIGINT NOT NULL DEFAULT 0
+  * `lifetime_entry_count` BIGINT NOT NULL DEFAULT 0
+* **convenience**
+
+  * `current_currency` CHAR(3)  (copied from user at last entry; not authoritative)
+  * `last_entry_at` DATETIME
+* **uniqueness**
+
+  * UNIQUE (`user_id`,`mode`,`tab_id`,`category_id`)
+
+### `entries`  ← **small, append-only event log** (supports “History (last N adds)”)
+
+* `id` PK
+* `row_id` FK → user\_category\_rows
+* `user_id` FK → users
+* `ts_utc` DATETIME (UTC)
+* `local_date` DATE (derived using user.tz for fast month queries)
+* `amount_cents` INT
+* `currency` CHAR(3)
+* `memo` VARCHAR(255) NULL
+* `source` VARCHAR(32) NULL  (ui/import/membership)
+* `idempotency_key` VARCHAR(64) UNIQUE NULL   (prevents double-posts on retries)
+* INDEX (`row_id`,`local_date`)
+* INDEX (`user_id`,`local_date`)
+
+### `user_currency_history`  ← **for switch markers**
+
+* `id` PK
+* `user_id` FK → users
+* `effective_from_utc` DATETIME
+* `currency` CHAR(3)
+* UNIQUE (`user_id`,`effective_from_utc`)
+* To switch currency: insert a new row; also update `users.active_currency`.
+
+### `monthly_snapshots`  ← **one per (row, month)**
+
+* `id` PK
+* `row_id` FK → user\_category\_rows
+* `user_id` FK → users
+* `mode`,`tab_id`,`category_id` (denorm for fast reads)
+* `month_start` DATE (tz-corrected first day)
+* `month_end`   DATE (exclusive end or last day)
+* `total_cents` BIGINT  (sum of all entries that month across currencies)
+* `predominant_currency` CHAR(3)  (currency with highest subtotal that month)
+* `entry_count` INT
+* UNIQUE (`row_id`,`month_start`)
+* INDEX (`user_id`,`month_start`)
+
+### `monthly_snapshot_subtotals`  ← **preferred per-currency breakdown**
+
+* `id` PK
+* `snapshot_id` FK → monthly\_snapshots
+* `currency` CHAR(3)
+* `total_cents` BIGINT
+* `entry_count` INT
+* UNIQUE (`snapshot_id`,`currency`)
+
+### (Optional) `memberships`  ← for auto-counting monthly
+
+* `id` PK
+* `row_id` FK → user\_category\_rows
+* `amount_cents` INT
+* `currency` CHAR(3)
+* `cycle` ENUM('monthly')  (can extend later)
+* `charge_day` TINYINT  (1–28)
+* `next_charge_local` DATE
+* `active` TINYINT(1)
+* When due, insert an **entry** with `source='membership'`.
+
+**Why this works**
+
+* **Minimal rows** during normal use: one `user_category_rows` per selection; the only growth comes from `entries` and monthly snapshots (bounded to 12×years×active rows).
+* **Idempotency**: unique keys on `(user_id,mode,tab,category)` and `(row_id,month_start)`; `entries.idempotency_key` avoids double increments.
+* **Concurrency-safe**: updates are done inside transactions with `SELECT … FOR UPDATE` on the row.
+
+# 3) Graphing logic (markers + legends)
+
+**Data source**
+
+* For monthly charts: load from `monthly_snapshots` joined to `monthly_snapshot_subtotals`.
+* For “this month so far”: take `user_category_rows.current_total_cents` and render as the current (in-progress) bar/point.
+
+**Currency visualization**
+
+* Use the user’s `user_currency_history` within the selected date range to build **currency segments**:
+
+  * Each segment is a continuous period `[switch_i, switch_{i+1})` with a single currency.
+  * Draw a **vertical line** at each `effective_from_utc` (converted to local time) across the chart area.
+  * Legend shows chips like: **Before: CAD**, **After: MAD** (one legend item per segment/currency present in range).
+
+**Series**
+
+* Per-category chart: one series of monthly totals. Color/marker style can change at currency boundaries, or keep one color and rely on vertical markers + legend.
+* Cross-tab chart: either (a) stack by tab, or (b) sum across tabs per month. If different currencies appear in one month, show stacked segments per currency (CAD portion + MAD portion) using `monthly_snapshot_subtotals`.
+
+**Tooltips**
+
+* Show `total_cents` plus inline per-currency breakdown for that month (e.g., `CAD 120.00 + MAD 45.00`).
+
+**Switch day in month**
+
+* If a currency switch happened mid-month, the bar/point still equals the sum; the tooltip shows per-currency subtotals; the vertical marker runs through that month.
+
+# 4) Monthly roll-up & reset (pseudocode)
+
+**When to run**
+
+* On app start for a user (first load after a month change **in user.tz**), and/or via a nightly scheduler.
+* Also run a **membership posting** task before roll-up (adds due entries for that month).
+
+```pseudo
+function rollup_user(user_id):
+  tz = get_user_timezone(user_id)
+  now_local = convert_to_tz(now_utc(), tz)
+  current_ym = format_ym(first_of_month(now_local))   // 'YYYY-MM'
+  rows = SELECT * FROM user_category_rows WHERE user_id = ? FOR UPDATE
+
+  for row in rows:
+    if row.open_month_ym == current_ym:
+       continue  // already current
+
+    // define the closed month window in local time
+    closed_ym = row.open_month_ym
+    month_start_local = parse_ym_to_first_day(closed_ym, tz)          // e.g., 2025-07-01 00:00:00 local
+    month_end_local   = month_start_local + 1 month                    // exclusive end
+    [start_utc, end_utc] = convert_window_to_utc(month_start_local, month_end_local)
+
+    // gather authoritative per-currency totals from entries
+    rowsums = SELECT currency, SUM(amount_cents) as total, COUNT(*) as cnt
+              FROM entries
+              WHERE row_id = row.id AND ts_utc >= start_utc AND ts_utc < end_utc
+              GROUP BY currency
+
+    total_all = sum(rowsums.total)
+    count_all = sum(rowsums.cnt)
+    predominant_currency = argmax_currency(rowsums.total)
+
+    // snapshot (idempotent)
+    UPSERT monthly_snapshots
+      KEY (row_id, month_start = date(month_start_local))
+      VALUES (
+        user_id, row_id, mode=row.mode, tab_id=row.tab_id, category_id=row.category_id,
+        month_start=date(month_start_local), month_end=date(month_end_local),
+        total_cents=total_all, predominant_currency, entry_count=count_all
+      )
+
+    // write per-currency subtotals (idempotent)
+    for each (cur, total, cnt) in rowsums:
+      UPSERT monthly_snapshot_subtotals
+        KEY (snapshot_id, currency)
+        VALUES (snapshot_id, cur, total, cnt)
+
+    // reset persistent row for the new month
+    UPDATE user_category_rows
+      SET current_total_cents = 0,
+          current_entry_count = 0,
+          open_month_ym = current_ym
+      WHERE id = row.id
+```
+
+**Adding an expense (idempotent, concurrency-safe)**
+
+```pseudo
+function add_expense(user_id, mode, tab_id, category_id, amount_cents, memo, client_key):
+  begin transaction
+    // ensure row exists (one-time creation)
+    row = SELECT * FROM user_category_rows
+          WHERE user_id=? AND mode=? AND tab_id=? AND category_id=? FOR UPDATE
+    if not row:
+       INSERT user_category_rows (user_id,mode,tab_id,category_id,open_month_ym=current_ym, ...)
+       row = SELECT ... FOR UPDATE
+
+    // currency at entry time
+    cur = SELECT active_currency FROM users WHERE id=?   // OR latest from user_currency_history
+
+    // idempotent entry insert
+    INSERT INTO entries (row_id,user_id,ts_utc,local_date,amount_cents,currency,memo,idempotency_key)
+      VALUES (row.id,user_id,now_utc, today_local(user.tz), amount_cents, cur, memo, client_key)
+      ON DUPLICATE KEY IGNORE
+
+    // if new row inserted above and the entry insert happened (affected_rows>0):
+    UPDATE user_category_rows
+      SET current_total_cents = current_total_cents + amount_cents,
+          current_entry_count = current_entry_count + 1,
+          lifetime_total_cents = lifetime_total_cents + amount_cents,
+          lifetime_entry_count = lifetime_entry_count + 1,
+          current_currency = cur,
+          last_entry_at = now_utc
+      WHERE id = row.id
+  commit
+```
+
+**Switching currency**
+
+```pseudo
+function switch_currency(user_id, new_cur):
+  begin transaction
+    INSERT INTO user_currency_history (user_id,effective_from_utc,currency)
+      VALUES (user_id, now_utc, new_cur)
+    UPDATE users SET active_currency = new_cur WHERE id = user_id
+  commit
+```
+
+**Deleting a category (soft)**
+
+```pseudo
+UPDATE user_category_rows SET is_active=0 WHERE id=?   // keep snapshots; can re-enable later
+```
+
+# UI/UX notes (to wire to the model)
+
+* **Tabs per mode**. Inside each tab: render **chips/toggles** for every category (system + user custom). Tapping a chip creates the **persistent row** (if missing) and opens the **Category Detail**:
+
+  * **CurrentMonthTotal** (+ badge with current currency)
+  * **Add amount** (amount, optional memo, optional date backfill restricted to current month)
+  * **History (last N)**: read `entries` for that row order by `ts_utc` desc limit N; show a small currency badge on each line.
+* **Graphs** (tab, category, cross-tab):
+
+  * base series from `monthly_snapshots.total_cents`
+  * per-currency breakdown from `monthly_snapshot_subtotals`
+  * vertical lines from `user_currency_history.effective_from_utc` mapped to x-axis
+  * legend: one item per currency present in the selected range (e.g., **CAD**, **MAD**); add labels like “Before/After” if only one switch.
