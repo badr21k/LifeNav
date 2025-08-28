@@ -8,17 +8,17 @@ class UserCategoryRow {
         $dbh->beginTransaction();
         
         try {
-            $st = $dbh->prepare("SELECT * FROM user_category_rows WHERE user_id = ? AND mode = ? AND tab_id = ? AND category_id = ? FOR UPDATE");
+            $st = $dbh->prepare("SELECT * FROM app_user_category_rows WHERE user_id = ? AND mode = ? AND tab_id = ? AND category_id = ? FOR UPDATE");
             $st->execute([$userId, $mode, $tabId, $categoryId]);
             $row = $st->fetch();
             
             if (!$row) {
                 $currentYm = date('Y-m');
-                $st = $dbh->prepare("INSERT INTO user_category_rows (user_id, mode, tab_id, category_id, open_month_ym, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
+                $st = $dbh->prepare("INSERT INTO app_user_category_rows (user_id, mode, tab_id, category_id, open_month_ym, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
                 $st->execute([$userId, $mode, $tabId, $categoryId, $currentYm]);
                 $id = $dbh->lastInsertId();
                 
-                $st = $dbh->prepare("SELECT * FROM user_category_rows WHERE id = ?");
+                $st = $dbh->prepare("SELECT * FROM app_user_category_rows WHERE id = ?");
                 $st->execute([$id]);
                 $row = $st->fetch();
             }
@@ -34,9 +34,9 @@ class UserCategoryRow {
     public static function getByUser(int $userId, string $mode): array {
         $st = db()->prepare("
             SELECT ucr.*, t.name as tab_name, c.name as category_name 
-            FROM user_category_rows ucr 
-            JOIN tabs t ON t.id = ucr.tab_id 
-            JOIN categories c ON c.id = ucr.category_id 
+            FROM app_user_category_rows ucr 
+            JOIN app_tabs t ON t.id = ucr.tab_id 
+            JOIN app_categories c ON c.id = ucr.category_id 
             WHERE ucr.user_id = ? AND ucr.mode = ? AND ucr.is_active = 1 
             ORDER BY t.sort, c.name
         ");
