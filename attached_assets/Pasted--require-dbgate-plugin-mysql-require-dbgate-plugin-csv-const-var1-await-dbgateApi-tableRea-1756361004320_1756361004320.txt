@@ -1,0 +1,69 @@
+// @require dbgate-plugin-mysql
+// @require dbgate-plugin-csv
+
+const var1 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"app_categories"});
+const var2 = await dbgatePluginCsv.shellApi.writer({"fileName":"app_categories.csv"});
+await dbgateApi.copyStream(var1, var2);
+
+const var3 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"app_entries"});
+const var4 = await dbgatePluginCsv.shellApi.writer({"fileName":"app_entries.csv"});
+await dbgateApi.copyStream(var3, var4);
+
+const var5 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"app_monthly_snapshot_subtotals"});
+const var6 = await dbgatePluginCsv.shellApi.writer({"fileName":"app_monthly_snapshot_subtotals.csv"});
+await dbgateApi.copyStream(var5, var6);
+
+const var7 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"app_monthly_snapshots"});
+const var8 = await dbgatePluginCsv.shellApi.writer({"fileName":"app_monthly_snapshots.csv"});
+await dbgateApi.copyStream(var7, var8);
+
+const var9 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"app_tabs"});
+const var10 = await dbgatePluginCsv.shellApi.writer({"fileName":"app_tabs.csv"});
+await dbgateApi.copyStream(var9, var10);
+
+const var11 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"app_user_category_rows"});
+const var12 = await dbgatePluginCsv.shellApi.writer({"fileName":"app_user_category_rows.csv"});
+await dbgateApi.copyStream(var11, var12);
+
+const var13 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"app_user_currency_history"});
+const var14 = await dbgatePluginCsv.shellApi.writer({"fileName":"app_user_currency_history.csv"});
+await dbgateApi.copyStream(var13, var14);
+
+const var15 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"categories"});
+const var16 = await dbgatePluginCsv.shellApi.writer({"fileName":"categories.csv"});
+await dbgateApi.copyStream(var15, var16);
+
+const var17 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"expense_tags"});
+const var18 = await dbgatePluginCsv.shellApi.writer({"fileName":"expense_tags.csv"});
+await dbgateApi.copyStream(var17, var18);
+
+const var19 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"expenses"});
+const var20 = await dbgatePluginCsv.shellApi.writer({"fileName":"expenses.csv"});
+await dbgateApi.copyStream(var19, var20);
+
+const var21 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"monthly_expense_totals"});
+const var22 = await dbgatePluginCsv.shellApi.writer({"fileName":"monthly_expense_totals.csv"});
+await dbgateApi.copyStream(var21, var22);
+
+const var23 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"payment_methods"});
+const var24 = await dbgatePluginCsv.shellApi.writer({"fileName":"payment_methods.csv"});
+await dbgateApi.copyStream(var23, var24);
+
+const var25 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"subcategories"});
+const var26 = await dbgatePluginCsv.shellApi.writer({"fileName":"subcategories.csv"});
+await dbgateApi.copyStream(var25, var26);
+
+const var27 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"tags"});
+const var28 = await dbgatePluginCsv.shellApi.writer({"fileName":"tags.csv"});
+await dbgateApi.copyStream(var27, var28);
+
+const var29 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"tenants"});
+const var30 = await dbgatePluginCsv.shellApi.writer({"fileName":"tenants.csv"});
+await dbgateApi.copyStream(var29, var30);
+
+const var31 = await dbgateApi.tableReader({"connection":{"_id":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","engine":"mysql@dbgate-plugin-mysql","database":"LifeNav_schoolnest"},"pureName":"users"});
+const var32 = await dbgatePluginCsv.shellApi.writer({"fileName":"users.csv"});
+await dbgateApi.copyStream(var31, var32);
+
+// @ImportExportConfigurator
+// {"sourceStorageType":"database","targetStorageType":"csv","targetArchiveFolder":"default","sourceArchiveFolder":"default","sourceConnectionId":"f6fee5c5-1cbb-4d34-b4c4-65e17803bc52","sourceDatabaseName":"LifeNav_schoolnest","sourceList":["app_categories","app_entries","app_monthly_snapshot_subtotals","app_monthly_snapshots","app_tabs","app_user_category_rows","app_user_currency_history","categories","expense_tags","expenses","monthly_expense_totals","payment_methods","subcategories","tags","tenants","users"]}
