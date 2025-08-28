@@ -1,6 +1,12 @@
 
 <?php
 
+require_once 'app/core/database.php';
+require_once 'app/models/Tab.php';
+require_once 'app/models/UserCategoryRow.php';
+require_once 'app/models/Entry.php';
+require_once 'app/models/MonthlySnapshot.php';
+
 class LifeNav extends Controller {
     
     private function requireAuth() {
