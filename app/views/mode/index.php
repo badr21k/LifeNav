@@ -4,8 +4,7 @@
   <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-2 mt-2">
     <?php foreach ($tabs as $t): ?>
       <div class="col">
-        <a class="btn btn-outline-primary w-100 py-3"
-           href="/mode/tab/<?= htmlspecialchars($t['mode']) ?>/<?= (int)$t['id'] ?>">
+        <a class="btn btn-outline-primary w-100 py-3" href="/mode/tab/<?= htmlspecialchars($t['mode']) ?>/<?= (int)$t['id'] ?>">
           <?= htmlspecialchars($t['name']) ?>
         </a>
       </div>

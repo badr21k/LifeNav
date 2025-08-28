@@ -13,17 +13,14 @@
     <?php foreach ($categories as $c): ?>
       <form method="post" action="/mode/select/<?= htmlspecialchars($tab['mode']) ?>/<?= (int)$tab['id'] ?>/<?= (int)$c['id'] ?>">
         <?= csrf_field() ?>
-        <button class="btn btn-outline-primary">
-          <?= $c['is_custom'] ? '⭐ ' : '' ?><?= htmlspecialchars($c['name']) ?>
-        </button>
+        <button class="btn btn-outline-primary"><?= $c['is_custom'] ? '⭐ ' : '' ?><?= htmlspecialchars($c['name']) ?></button>
       </form>
     <?php endforeach; ?>
   </div>
 
   <hr class="my-4">
   <h5>Add custom category</h5>
-  <form class="row g-2" method="post" action="/mode/select/<?= htmlspecialchars($tab['mode']) ?>/<?= (int)$tab['id'] ?>/0"
-        onsubmit="return false;">
+  <form class="row g-2" onsubmit="return false;">
     <div class="col-md-6">
       <input class="form-control" id="customName" placeholder="Custom category name">
     </div>
@@ -39,14 +36,13 @@ async function createCustom() {
   if (!name) return alert('Enter a name');
   try {
     const res = await fetch('/tools/custom-category', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({tab_id: <?= (int)$tab['id'] ?>, name})
     });
     const j = await res.json();
-    if (j.ok) { window.location.href = '/mode/select/<?= htmlspecialchars($tab['mode']) ?>/<?= (int)$tab['id'] ?>/'+j.category_id; }
+    if (j.ok) location.href = '/mode/select/<?= htmlspecialchars($tab['mode']) ?>/<?= (int)$tab['id'] ?>/'+j.category_id;
     else alert(j.error || 'Failed');
-  } catch(e){ alert('Network error'); }
+  } catch { alert('Network error'); }
 }
 </script>
 <?php require 'app/views/templates/footer.php'; ?>

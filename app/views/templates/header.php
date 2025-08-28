@@ -43,6 +43,11 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         <li class="nav-item">
           <a class="nav-link<?= $active('home') ?>" href="/home">Home</a>
         </li>
+        <li class="nav-item"><a class="nav-link" href="/mode/normal">Normal</a></li>
+        <li class="nav-item"><a class="nav-link" href="/mode/travel">Travel</a></li>
+        <li class="nav-item"><a class="nav-link" href="/reports/overview">Reports</a></li>
+        <li class="nav-item"><a class="nav-link" href="/settings/currency">Currency</a></li>
+
 
         <!-- LifeNav module -->
         <li class="nav-item dropdown">
