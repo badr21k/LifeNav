@@ -1,83 +1,1825 @@
 
 <?php require 'app/views/templates/header.php'; ?>
 
-<div class="container mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h3 class="m-0">LifeNav</h3>
-            <div class="btn-group" role="group" aria-label="Mode Selection">
-                <a href="/lifenav/normal" class="btn <?= $mode === 'normal' ? 'btn-primary' : 'btn-outline-primary' ?>">Normal</a>
-                <a href="/lifenav/travel" class="btn <?= $mode === 'travel' ? 'btn-primary' : 'btn-outline-primary' ?>">Travel</a>
-            </div>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-            <form method="post" action="/lifenav/switch_currency" class="d-inline-flex align-items-center gap-2">
-                <?= csrf_field() ?>
-                <label class="form-label mb-0">Currency:</label>
-                <input type="text" name="currency" value="<?= htmlspecialchars($currency) ?>" maxlength="3" class="form-control form-control-sm" style="width: 70px;">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">Switch</button>
-            </form>
-            <a href="/lifenav/reports/monthly?mode=<?= $mode ?>" class="btn btn-outline-info btn-sm">Reports</a>
-        </div>
-    </div>
 
-    <?php if (!empty($_SESSION['flash_error'])): ?>
-        <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['flash_error']); unset($_SESSION['flash_error']); ?></div>
-    <?php endif; ?>
-    <?php if (!empty($_SESSION['flash_ok'])): ?>
-        <div class="alert alert-success"><?= htmlspecialchars($_SESSION['flash_ok']); unset($_SESSION['flash_ok']); ?></div>
-    <?php endif; ?>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>LifeNav - Financial Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.2/babel.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a1a1a; /* Black */
+            --primary-dark: #0d0d0d; /* Darker black */
+            --primary-light: #f1f1f1; /* Light gray */
+            --secondary: #6b7280; /* Medium gray */
+            --accent: #4b5563; /* Darker gray for accents */
+            --background: #ffffff; /* White */
+            --card: #ffffff; /* White */
+            --text: #1a1a1a; /* Black */
+            --text-light: #6b7280; /* Gray */
+            --border: #e5e7eb; /* Light gray border */
+            --success: #10b981; /* Green for progress bars */
+            --warning: #f59e0b; /* Amber for warnings */
+            --danger: #ef4444; /* Red for errors */
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
+            --transition: all 0.2s ease-in-out;
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+            --safe-area-inset-top: env(safe-area-inset-top, 0);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0);
+            --safe-area-inset-left: env(safe-area-inset-left, 0);
+            --safe-area-inset-right: env(safe-area-inset-right, 0);
+        }
 
-    <?php foreach ($tabs as $tab): ?>
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><?= htmlspecialchars($tab['name']) ?></h5>
-            </div>
-            <div class="card-body">
-                <?php
-                $categories = [];
-                $st = db()->prepare("SELECT * FROM categories WHERE tab_id = ? AND (is_custom = 0 OR user_id = ?) AND active = 1 ORDER BY is_custom, name");
-                $st->execute([$tab['id'], $userId]);
-                $categories = $st->fetchAll();
-                
-                $userRowsForTab = $rowsByTab[$tab['id']] ?? [];
-                $activeCategories = array_column($userRowsForTab, 'category_id');
-                ?>
-                
-                <div class="row g-2">
-                    <?php foreach ($categories as $category): ?>
-                        <?php $isActive = in_array($category['id'], $activeCategories); ?>
-                        <?php if ($isActive): ?>
-                            <?php
-                            $userRow = array_filter($userRowsForTab, fn($r) => $r['category_id'] == $category['id'])[0];
-                            $total = number_format($userRow['current_total_cents'] / 100, 2);
-                            ?>
-                            <div class="col-auto">
-                                <a href="/lifenav/category/<?= $userRow['id'] ?>" class="btn btn-success position-relative">
-                                    <?= htmlspecialchars($category['name']) ?>
-                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-light text-dark">
-                                        <?= $total ?> <?= htmlspecialchars($currency) ?>
-                                    </span>
-                                </a>
-                            </div>
-                        <?php else: ?>
-                            <div class="col-auto">
-                                <form method="post" action="/lifenav/select_category" class="d-inline">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="mode" value="<?= htmlspecialchars($mode) ?>">
-                                    <input type="hidden" name="tab_id" value="<?= $tab['id'] ?>">
-                                    <input type="hidden" name="category_id" value="<?= $category['id'] ?>">
-                                    <button type="submit" class="btn btn-outline-secondary">
-                                        <?= htmlspecialchars($category['name']) ?>
-                                    </button>
-                                </form>
-                            </div>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+    height: 100%;
+    font-size: 16px; /* Base font size */
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--background);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 1rem;
+    padding-left: calc(1rem + var(--safe-area-inset-left));
+    padding-right: calc(1rem + var(--safe-area-inset-right));
+    padding-top: calc(1rem + var(--safe-area-inset-top));
+    padding-bottom: calc(1rem + var(--safe-area-inset-bottom));
+    font-size: 1rem;
+    font-weight: 400;
+    display: flex;
+    flex-direction: column;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.container {
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+    flex: 1;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-md);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.logo-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    background: var(--primary);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--background);
+    font-weight: 700;
+    font-size: 1.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.logo-text {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.btn {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background-color: var(--card);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+    font-size: 0.875rem;
+    line-height: 1.25;
+    min-height: 3rem;
+    min-width: 3rem;
+    touch-action: manipulation;
+}
+
+.btn:hover, .btn:focus-visible {
+    background-color: var(--primary-light);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    outline: none;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: var(--background);
+    border: none;
+}
+
+.btn-primary:hover, .btn-primary:focus-visible {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+.mode-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    color: var(--text-light);
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-light);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.card {
+    background: var(--card);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+}
+
+.card-header {
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.summary-item {
+    padding: 1rem;
+    background-color: var(--primary-light);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.progress-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width 0.3s ease-in-out;
+}
+
+.category-totals {
+    margin-top: 1rem;
+}
+
+.category-total-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+}
+
+.category-total-item:last-child {
+    border-bottom: none;
+}
+
+.category-total-name {
+    font-weight: 600;
+}
+
+.category-total-amount {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+    padding: 0.5rem;
+    background-color: var(--primary-light);
+    border-radius: var(--radius-sm);
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.875rem;
+    color: var(--text-light);
+    white-space: nowrap;
+    scroll-snap-align: start;
+    touch-action: manipulation;
+}
+
+.tab.active {
+    background-color: var(--card);
+    color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.tab:hover, .tab:focus-visible {
+    background-color: var(--card);
+    color: var(--primary);
+    outline: none;
+}
+
+.expense-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.expense-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 1rem;
+}
+
+.expense-table th {
+    text-align: left;
+    padding: 0.75rem;
+    font-weight: 600;
+    color: var(--text-light);
+    font-size: 0.875rem;
+    border-bottom: 2px solid var(--border);
+}
+
+.expense-table td {
+    padding: 0.75rem;
+    background-color: var(--background);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+}
+
+.expense-table tr td:first-child {
+    border-left: 1px solid var(--border);
+    border-top-left-radius: var(--radius-sm);
+    border-bottom-left-radius: var(--radius-sm);
+}
+
+.expense-table tr td:last-child {
+    border-right: 1px solid var(--border);
+    border-top-right-radius: var(--radius-sm);
+    border-bottom-right-radius: var(--radius-sm);
+}
+
+.currency-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: var(--transition);
+    border-radius: var(--radius-sm);
+    touch-action: manipulation;
+}
+
+.action-btn:hover, .action-btn:focus-visible {
+    color: var(--danger);
+    background-color: var(--primary-light);
+    outline: none;
+}
+
+.action-btn.edit-btn:hover, .action-btn.edit-btn:focus-visible {
+    color: var(--primary);
+}
+
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.category-item {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background-color: var(--card);
+    font-weight: 600;
+    font-size: 0.875rem;
+    box-shadow: var(--shadow-sm);
+    touch-action: manipulation;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.category-item:hover, .category-item:focus-visible {
+    border-color: var(--primary);
+    background-color: var(--primary-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    outline: none;
+}
+
+.category-item.active {
+    border-color: var(--primary);
+    background-color: var(--primary-light);
+    color: var(--primary);
+}
+
+.chart-container {
+    position: relative;
+    height: clamp(200px, 40vw, 280px);
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: var(--card);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+}
+
+.category-chart {
+    margin-top: 1.5rem;
+}
+
+.category-chart h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-light);
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--border);
+}
+
+.empty-state p {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.expense-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-size: 0.875rem;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.form-control {
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background-color: var(--background);
+    font-family: inherit;
+    transition: var(--transition);
+    font-size: 0.875rem;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.checkbox-group input {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: var(--primary);
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+    padding-left: calc(1rem + var(--safe-area-inset-left));
+    padding-right: calc(1rem + var(--safe-area-inset-right));
+    padding-top: calc(1rem + var(--safe-area-inset-top));
+    padding-bottom: calc(1rem + var(--safe-area-inset-bottom));
+}
+
+.modal-content {
+    background: var(--card);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    width: 100%;
+    max-width: 32rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: var(--transition);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.close-modal:hover, .close-modal:focus-visible {
+    color: var(--primary);
+    background-color: var(--primary-light);
+    outline: none;
+}
+
+.subcat-group {
+    margin-bottom: 1.5rem;
+}
+
+.subcat-group h4 {
+    color: var(--primary);
+    margin-bottom: 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+}
+
+.subcat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.subcat-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.expense-section {
+    margin-top: 1.5rem;
+}
+
+.expense-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.expense-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-enter {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.modal-enter-active {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 200ms ease-in-out, transform 200ms ease-in-out;
+}
+
+.modal-exit {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.modal-exit-active {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 200ms ease-in-out, transform 200ms ease-in-out;
+}
+
+.error-message {
+    color: var(--danger);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+@media (min-width: 640px) {
+    .header {
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 1.5rem;
+    }
+    .expense-form {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .btn {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.9375rem;
+    }
+    .btn span {
+        display: inline;
+    }
+    .card {
+        padding: 1.5rem;
+    }
+    .card-title {
+        font-size: 1.5rem;
+    }
+    .modal-content {
+        padding: 2rem;
+        max-width: 36rem;
+    }
+    .modal-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    body {
+        padding: 1.5rem;
+        padding-left: calc(1.5rem + var(--safe-area-inset-left));
+        padding-right: calc(1.5rem + var(--safe-area-inset-right));
+        padding-top: calc(1.5rem + var(--safe-area-inset-top));
+        padding-bottom: calc(1.5rem + var(--safe-area-inset-bottom));
+    }
+    .summary-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .category-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+    .chart-container {
+        height: 300px;
+    }
+}
+
+@media (max-width: 640px) {
+    .logo-text {
+        font-size: 1.5rem;
+    }
+    .logo-icon {
+        width: 2rem;
+        height: 2rem;
+        font-size: 1rem;
+    }
+    .btn {
+        padding: 0.5rem;
+        font-size: 0.8125rem;
+        min-height: 2.5rem;
+    }
+    .btn span {
+        display: none;
+    }
+    .mode-indicator {
+        font-size: 0.8125rem;
+        padding: 0.5rem 0.75rem;
+    }
+    .card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .card-title {
+        font-size: 1.125rem;
+    }
+    .summary-item {
+        padding: 0.75rem;
+    }
+    .summary-label {
+        font-size: 0.8125rem;
+    }
+    .summary-value {
+        font-size: 1.125rem;
+    }
+    .tab {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+    .category-item {
+        padding: 0.75rem;
+        font-size: 0.8125rem;
+    }
+    .form-control {
+        padding: 0.625rem;
+        font-size: 0.875rem;
+    }
+    .expense-table th,
+    .expense-table td {
+        font-size: 0.8125rem;
+    }
+    .modal-content {
+        padding: 1.25rem;
+        max-width: 95%;
+    }
+    .modal-title {
+        font-size: 1.125rem;
+    }
+    .close-modal {
+        font-size: 1.25rem;
+    }
+    .chart-container {
+        height: 220px;
+    }
+}
+
+@media (max-width: 480px) {
+    .expense-table {
+        display: block;
+    }
+    .expense-table thead {
+        display: none;
+    }
+    .expense-table tbody {
+        display: block;
+    }
+    .expense-table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background-color: var(--background);
+    }
+    .expense-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        background-color: transparent;
+    }
+    .expense-table td:last-child {
+        border-bottom: none;
+    }
+    .expense-table td:before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-light);
+        flex: 1;
+        min-width: 100px;
+    }
+    .expense-table td[data-label="Actions"] {
+        justify-content: flex-end;
+    }
+    .expense-table td[data-label="Actions"]:before {
+        content: none;
+    }
+}
+
+@media (max-width: 360px) {
+    .category-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+    .btn {
+        padding: 0.5rem 0.75rem;
+    }
+    .tab {
+        padding: 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+
+@media (display-mode: standalone) {
+    body {
+        padding-top: calc(1rem + var(--safe-area-inset-top));
+    }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .modal-content {
+        max-height: 80vh;
+    }
+    .chart-container {
+        height: 180px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
+    .btn:hover, .btn:focus-visible,
+    .action-btn:hover, .action-btn:focus-visible,
+    .category-item:hover, .category-item:focus-visible {
+        transform: none;
+    }
+}
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .btn, .tab, .category-item, .action-btn {
+        border-width: 0.5px;
+    }
+}
+
+
+</style>
+
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+
+// Currency list
+const currencies = [
+    { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+    { code: 'USD', symbol: '$', name: 'US Dollar' },
+    { code: 'EUR', symbol: '€', name: 'Euro' },
+    { code: 'GBP', symbol: '£', name: 'British Pound' },
+    { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+    { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+    { code: 'CHF', symbol: 'Fr', name: 'Swiss Franc' },
+    { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
+    { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+    { code: 'MXN', symbol: '$', name: 'Mexican Peso' },
+    { code: 'NZD', symbol: '$', name: 'New Zealand Dollar' },
+    { code: 'SGD', symbol: '$', name: 'Singapore Dollar' },
+    { code: 'HKD', symbol: '$', name: 'Hong Kong Dollar' },
+    { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
+    { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
+    { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
+    { code: 'TRY', symbol: '₺', name: 'Turkish Lira' },
+    { code: 'RUB', symbol: '₽', name: 'Russian Ruble' },
+    { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
+    { code: 'ZAR', symbol: 'R', name: 'South African Rand' }
+];
+
+// Category icons
+const categoryIcons = {
+    'Transportation': 'fa-car',
+    'Accommodation': 'fa-home',
+    'Food & Dining': 'fa-utensils',
+    'Health': 'fa-heartbeat',
+    'Entertainment': 'fa-ticket-alt',
+    'Travel': 'fa-plane',
+    'Activities': 'fa-hiking'
+};
+
+// Helper functions
+const getStartOfWeek = (date) => {
+    const day = date.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    const start = new Date(date);
+    start.setDate(start.getDate() + diff);
+    start.setHours(0, 0, 0, 0);
+    return start;
+};
+
+const getEndOfWeek = (date) => {
+    const start = getStartOfWeek(date);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return end;
+};
+
+// Error Boundary Component
+function ErrorBoundary({ children }) {
+    const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+        const handleError = (error, errorInfo) => {
+            console.error('ErrorBoundary caught:', error, errorInfo);
+            setHasError(true);
+        };
+        window.addEventListener('error', handleError);
+        return () => window.removeEventListener('error', handleError);
+    }, []);
+
+    if (hasError) {
+        return (
+            <div className="card">
+                <div className="empty-state">
+                    <i className="fas fa-exclamation-circle"></i>
+                    <p>Something went wrong. Please refresh the page.</p>
                 </div>
             </div>
-        </div>
-    <?php endforeach; ?>
-</div>
+        );
+    }
+    return children;
+}
+
+// Main App Component
+function App() {
+    const [state, setState] = useState({
+        mode: 'normal',
+        expenses: [],
+        categories: {
+            normal: [
+                { name: 'Transportation', subcategories: ['Car Insurance', 'Fuel', 'Parking', 'Public Transit', 'Other'] },
+                { name: 'Accommodation', subcategories: ['Rent', 'Mortgage', 'Utilities', 'Internet', 'Other'] },
+                { name: 'Food & Dining', subcategories: ['Groceries', 'Restaurants', 'Coffee', 'Takeout', 'Other'] },
+                { name: 'Health', subcategories: ['Doctor Visits', 'Medications', 'Dental', 'Vision', 'Fitness', 'Other'] },
+                { name: 'Entertainment', subcategories: ['Movies', 'Games', 'Sports', 'Concerts', 'Other'] },
+            ],
+            travel: [
+                { name: 'Travel', subcategories: ['Flights', 'Hotels', 'Dining', 'Tours', 'Visas', 'Other'] },
+                { name: 'Transportation', subcategories: ['Local Transport', 'Car Rental', 'Fuel', 'Parking', 'Other'] },
+                { name: 'Accommodation', subcategories: ['Hotels', 'Airbnb', 'Hostels', 'Other'] },
+                { name: 'Health', subcategories: ['Travel Insurance', 'Medications', 'Vaccinations', 'Other'] },
+                { name: 'Activities', subcategories: ['Tours', 'Museums', 'Entertainment', 'Shopping', 'Other'] },
+            ],
+        },
+        currentCategory: 'Transportation',
+        currentSubcategory: null,
+        showCharts: false,
+        baseCurrency: 'CAD',
+        exchangeRates: {},
+        charts: {},
+        paycheck: 0,
+        weeklyBudgetNormal: 0,
+        travelBudget: 0,
+        weeklyBudgetTravel: 0,
+        editingId: null,
+        fromRecurringList: false,
+        modal: null,
+        error: null,
+    });
+
+    const chartRef = useRef(null);
+    const categoryChartRefs = useRef({});
+
+    // Fetch exchange rates
+    const getExchangeRates = async () => {
+        if (Object.keys(state.exchangeRates).length > 0) return;
+        try {
+            const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${state.baseCurrency}`);
+            if (!response.ok) throw new Error('Failed to fetch exchange rates');
+            const data = await response.json();
+            setState(prev => ({ ...prev, exchangeRates: { ...data.rates, [state.baseCurrency]: 1 } }));
+        } catch (error) {
+            console.error('Failed to fetch exchange rates:', error);
+            setState(prev => ({ ...prev, error: 'Failed to fetch exchange rates. Using default rate of 1.' }));
+        }
+    };
+
+    // Convert amount to base currency
+    const convertToBase = (amount, currency) => {
+        if (currency === state.baseCurrency) return amount;
+        const rate = state.exchangeRates[currency] || 1;
+        return amount / rate;
+    };
+
+    // Toggle mode
+    const toggleMode = () => {
+        setState(prev => ({
+            ...prev,
+            mode: prev.mode === 'normal' ? 'travel' : 'normal',
+            currentCategory: prev.categories[prev.mode === 'normal' ? 'travel' : 'normal'][0].name,
+            currentSubcategory: null,
+            showCharts: false,
+        }));
+    };
+
+    // Toggle charts
+    const toggleCharts = () => {
+        setState(prev => ({ ...prev, showCharts: !prev.showCharts }));
+    };
+
+    // Open modal
+    const openModal = (modalType, editingId = null, fromRecurringList = false) => {
+        setState(prev => ({ ...prev, modal: modalType, editingId, fromRecurringList }));
+    };
+
+    // Close modal
+    const closeModal = () => {
+        setState(prev => ({ ...prev, modal: null, editingId: null, fromRecurringList: false, error: null }));
+    };
+
+    // Save new category
+    const saveCategory = () => {
+        const nameInput = document.getElementById('new-category-name');
+        if (!nameInput) return;
+        const name = nameInput.value.trim();
+        if (!name) {
+            setState(prev => ({ ...prev, error: 'Please enter a category name' }));
+            return;
+        }
+        setState(prev => ({
+            ...prev,
+            categories: {
+                ...prev.categories,
+                [prev.mode]: [...prev.categories[prev.mode], { name, subcategories: ['Other'] }],
+            },
+            modal: null,
+            error: null,
+        }));
+    };
+
+    // Save new subcategory
+    const saveSubcategory = () => {
+        const nameInput = document.getElementById('new-subcategory-name');
+        if (!nameInput) return;
+        const name = nameInput.value.trim();
+        if (!name) {
+            setState(prev => ({ ...prev, error: 'Please enter a subcategory name' }));
+            return;
+        }
+        setState(prev => ({
+            ...prev,
+            categories: {
+                ...prev.categories,
+                [prev.mode]: prev.categories[prev.mode].map(cat =>
+                    cat.name === prev.currentCategory
+                        ? { ...cat, subcategories: [...cat.subcategories, name] }
+                        : cat
+                ),
+            },
+            modal: null,
+            error: null,
+        }));
+    };
+
+    // Save budgets
+    const saveBudgets = () => {
+        const paycheck = parseFloat(document.getElementById('paycheck')?.value) || 0;
+        const weeklyBudgetNormal = parseFloat(document.getElementById('weekly-budget-normal')?.value) || 0;
+        const travelBudget = parseFloat(document.getElementById('travel-budget')?.value) || 0;
+        const weeklyBudgetTravel = parseFloat(document.getElementById('weekly-budget-travel')?.value) || 0;
+        setState(prev => ({
+            ...prev,
+            paycheck: prev.mode === 'normal' ? paycheck : prev.paycheck,
+            weeklyBudgetNormal: prev.mode === 'normal' ? weeklyBudgetNormal : prev.weeklyBudgetNormal,
+            travelBudget: prev.mode === 'travel' ? travelBudget : prev.travelBudget,
+            weeklyBudgetTravel: prev.mode === 'travel' ? weeklyBudgetTravel : prev.weeklyBudgetTravel,
+            modal: null,
+            error: null,
+        }));
+    };
+
+    // Save expense
+    const saveExpense = () => {
+        const amountInput = document.getElementById('amount');
+        const dateInput = document.getElementById('date');
+        const recurringInput = document.getElementById('recurring');
+        const recurringStartInput = document.getElementById('recurring-start');
+        if (!amountInput || !dateInput) return;
+
+        const amount = parseFloat(amountInput.value);
+        if (!amount || isNaN(amount) || amount <= 0) {
+            setState(prev => ({ ...prev, error: 'Please enter a valid amount' }));
+            return;
+        }
+        if (recurringInput?.checked && !recurringStartInput?.value) {
+            setState(prev => ({ ...prev, error: 'Please enter a start date for recurring expenses' }));
+            return;
+        }
+
+        const expense = {
+            id: state.editingId || Date.now(),
+            mode: state.mode,
+            category: document.getElementById('modal-category')?.value,
+            subcategory: document.getElementById('modal-subcategory')?.value,
+            amount,
+            currency: document.getElementById('currency')?.value,
+            symbol: currencies.find(c => c.code === document.getElementById('currency')?.value)?.symbol,
+            date: dateInput.value,
+            description: document.getElementById('description')?.value || document.getElementById('modal-subcategory')?.value,
+            countWeekly: document.getElementById('count-weekly')?.checked,
+            recurring: recurringInput?.checked ? {
+                start: recurringStartInput.value,
+                end: document.getElementById('recurring-forever')?.checked ? null : document.getElementById('recurring-end')?.value || null,
+                forever: document.getElementById('recurring-forever')?.checked,
+            } : false,
+        };
+
+        setState(prev => ({
+            ...prev,
+            expenses: prev.editingId
+                ? prev.expenses.map(exp => (exp.id === prev.editingId ? expense : exp))
+                : [...prev.expenses, expense],
+            modal: null,
+            editingId: null,
+            fromRecurringList: false,
+            error: null,
+        }));
+    };
+
+    // Edit expense
+    const editExpense = (id) => {
+        openModal('add-expense', id, state.fromRecurringList);
+    };
+
+    // Delete expense
+    const deleteExpense = (id) => {
+        setState(prev => ({
+            ...prev,
+            expenses: prev.expenses.filter(exp => exp.id !== id),
+        }));
+    };
+
+    // Render charts
+    useEffect(() => {
+        if (!state.showCharts || state.expenses.length === 0) return;
+
+        const modeExpenses = state.expenses.filter(exp => exp.mode === state.mode);
+        const categoryTotals = {};
+        modeExpenses.forEach(exp => {
+            categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + convertToBase(exp.amount, exp.currency);
+        });
+
+        if (chartRef.current) {
+            if (state.charts.main) state.charts.main.destroy();
+            const ctx = chartRef.current.getContext('2d');
+            const newChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categoryTotals),
+                    datasets: [{
+                        data: Object.values(categoryTotals),
+                        backgroundColor: ['#1a1a1a', '#4b5563', '#6b7280', '#9ca3af', '#d1d5db'],
+                        borderWidth: 1,
+                        borderColor: '#fff',
+                        hoverOffset: 12,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { size: 12, family: 'Inter', weight: '600' }, padding: 16 },
+                        },
+                        tooltip: { backgroundColor: '#1a1a1a', bodyFont: { family: 'Inter', size: 12 }, titleFont: { family: 'Inter', size: 14 } },
+                    },
+                    cutout: '65%',
+                    animation: { animateScale: true },
+                },
+            });
+            setState(prev => ({ ...prev, charts: { ...prev.charts, main: newChart } }));
+        }
+
+        const categorySubtotals = {};
+        modeExpenses.forEach(exp => {
+            if (!categorySubtotals[exp.category]) categorySubtotals[exp.category] = {};
+            categorySubtotals[exp.category][exp.subcategory] = (categorySubtotals[exp.category][exp.subcategory] || 0) + convertToBase(exp.amount, exp.currency);
+        });
+
+        Object.keys(categorySubtotals).forEach(cat => {
+            if (categoryChartRefs.current[cat] && Object.keys(categorySubtotals[cat]).length > 0) {
+                if (state.charts[cat]) state.charts[cat].destroy();
+                const ctx = categoryChartRefs.current[cat].getContext('2d');
+                const newChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(categorySubtotals[cat]),
+                        datasets: [{
+                            data: Object.values(categorySubtotals[cat]),
+                            backgroundColor: ['#1a1a1a', '#4b5563', '#6b7280', '#9ca3af', '#d1d5db'],
+                            borderWidth: 1,
+                            borderColor: '#fff',
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { font: { size: 12, family: 'Inter', weight: '600' }, padding: 16 },
+                            },
+                            tooltip: { backgroundColor: '#1a1a1a', bodyFont: { family: 'Inter', size: 12 }, titleFont: { family: 'Inter', size: 14 } },
+                        },
+                    },
+                });
+                setState(prev => ({ ...prev, charts: { ...prev.charts, [cat]: newChart } }));
+            }
+        });
+
+        return () => {
+            Object.values(state.charts).forEach(chart => chart?.destroy());
+        };
+    }, [state.showCharts, state.expenses, state.mode, state.exchangeRates]);
+
+    // Initialize app
+    useEffect(() => {
+        getExchangeRates();
+        return () => {
+            Object.values(state.charts).forEach(chart => chart?.destroy());
+        };
+    }, []);
+
+    // Handle recurring checkbox
+    useEffect(() => {
+        const recurringCheckbox = document.getElementById('recurring');
+        const recurringOptions = document.getElementById('recurring-options');
+        const recurringForever = document.getElementById('recurring-forever');
+        const recurringEnd = document.getElementById('recurring-end');
+        if (recurringCheckbox && recurringOptions) {
+            const handleRecurringChange = () => {
+                recurringOptions.style.display = recurringCheckbox.checked ? 'block' : 'none';
+            };
+            recurringCheckbox.addEventListener('change', handleRecurringChange);
+            if (recurringForever && recurringEnd) {
+                const handleForeverChange = () => {
+                    recurringEnd.disabled = recurringForever.checked;
+                };
+                recurringForever.addEventListener('change', handleForeverChange);
+                return () => {
+                    recurringCheckbox.removeEventListener('change', handleRecurringChange);
+                    recurringForever.removeEventListener('change', handleForeverChange);
+                };
+            }
+        }
+    }, [state.modal]);
+
+    // Update summary
+    const getSummary = () => {
+        const modeExpenses = state.expenses.filter(exp => exp.mode === state.mode);
+        const total = modeExpenses.reduce((sum, exp) => sum + convertToBase(exp.amount, exp.currency), 0);
+        const startOfWeek = getStartOfWeek(new Date()).toISOString().split('T')[0];
+        const endOfWeek = getEndOfWeek(new Date()).toISOString().split('T')[0];
+        const weeklySpent = modeExpenses
+            .filter(exp => exp.date >= startOfWeek && exp.date <= endOfWeek)
+            .reduce((sum, exp) => sum + (exp.countWeekly ? convertToBase(exp.amount, exp.currency) : 0), 0);
+
+        return {
+            total,
+            weeklySpent,
+            budget: state.mode === 'normal' ? state.paycheck : state.travelBudget,
+            weeklyBudget: state.mode === 'normal' ? state.weeklyBudgetNormal : state.weeklyBudgetTravel,
+        };
+    };
+
+    // Modal component (kept from Script 1)
+    function Modal({ type, onClose }) {
+        if (!type) return null;
+        const editingExpense = state.editingId ? state.expenses.find(exp => exp.id === state.editingId) : null;
+
+        return (
+            <div className="modal modal-enter-active" aria-modal="true" role="dialog">
+                <div className="modal-content">
+                    {state.error && <div className="error-message">{state.error}</div>}
+                    {type === 'add-category' && (
+                        <>
+                            <div className="modal-header">
+                                <h3 className="modal-title">New Category</h3>
+                                <button onClick={onClose} className="close-modal" aria-label="Close modal">&times;</button>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="new-category-name">Name</label>
+                                <input id="new-category-name" type="text" className="form-control" placeholder="Enter category name" />
+                            </div>
+                            <button onClick={saveCategory} className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }}>Save</button>
+                        </>
+                    )}
+                    {type === 'add-subcategory' && (
+                        <>
+                            <div className="modal-header">
+                                <h3 className="modal-title">New Subcategory</h3>
+                                <button onClick={onClose} className="close-modal" aria-label="Close modal">&times;</button>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="new-subcategory-name">Name</label>
+                                <input id="new-subcategory-name" type="text" className="form-control" placeholder="Enter subcategory name" />
+                            </div>
+                            <button onClick={saveSubcategory} className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }}>Save</button>
+                        </>
+                    )}
+                    {type === 'set-budgets' && (
+                        <>
+                            <div className="modal-header">
+                                <h3 className="modal-title">Set Budgets for {state.mode.charAt(0).toUpperCase() + state.mode.slice(1)}</h3>
+                                <button onClick={onClose} className="close-modal" aria-label="Close modal">&times;</button>
+                            </div>
+                            {state.mode === 'normal' ? (
+                                <>
+                                    <div className="form-group">
+                                        <label htmlFor="paycheck">Paycheck</label>
+                                        <input id="paycheck" type="number" step="0.01" className="form-control" defaultValue={state.paycheck} placeholder="0.00" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label htmlFor="weekly-budget-normal">Weekly Budget</label>
+                                        <input id="weekly-budget-normal" type="number" step="0.01" className="form-control" defaultValue={state.weeklyBudgetNormal} placeholder="0.00" />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="form-group">
+                                        <label htmlFor="travel-budget">Budget</label>
+                                        <input id="travel-budget" type="number" step="0.01" className="form-control" defaultValue={state.travelBudget} placeholder="0.00" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label htmlFor="weekly-budget-travel">Weekly Budget</label>
+                                        <input id="weekly-budget-travel" type="number" step="0.01" className="form-control" defaultValue={state.weeklyBudgetTravel} placeholder="0.00" />
+                                    </div>
+                                </>
+                            )}
+                            <button onClick={saveBudgets} className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }}>Save</button>
+                        </>
+                    )}
+                    {type === 'add-expense' && (
+                        <>
+                            <div className="modal-header">
+                                <h3 className="modal-title">{state.editingId ? 'Edit Expense' : 'Add Expense'}</h3>
+                                <button onClick={onClose} className="close-modal" aria-label="Close modal">&times;</button>
+                            </div>
+                            <div className="expense-form">
+                                <div className="form-group">
+                                    <label htmlFor="modal-category">Category</label>
+                                    <select id="modal-category" className="form-control" defaultValue={editingExpense?.category || state.currentCategory} onChange={() => {
+                                        const catSelect = document.getElementById('modal-category');
+                                        const subcatSelect = document.getElementById('modal-subcategory');
+                                        if (!catSelect || !subcatSelect) return;
+                                        const category = state.categories[state.mode].find(c => c.name === catSelect.value);
+                                        subcatSelect.innerHTML = '';
+                                        if (category) {
+                                            category.subcategories.forEach(sub => {
+                                                const opt = document.createElement('option');
+                                                opt.value = sub;
+                                                opt.textContent = sub;
+                                                subcatSelect.appendChild(opt);
+                                            });
+                                        }
+                                    }}>
+                                        {state.categories[state.mode].map(cat => (
+                                            <option key={cat.name} value={cat.name}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label htmlFor="modal-subcategory">Subcategory</label>
+                                    <select id="modal-subcategory" className="form-control" defaultValue={editingExpense?.subcategory || state.currentSubcategory}>
+                                        {state.categories[state.mode].find(c => c.name === (editingExpense?.category || state.currentCategory))?.subcategories.map(sub => (
+                                            <option key={sub} value={sub}>{sub}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label htmlFor="amount">Amount</label>
+                                    <input id="amount" type="number" step="0.01" className="form-control" defaultValue={editingExpense?.amount || ''} placeholder="0.00" />
+                                </div>
+                                <div className="form-group">
+                                    <label htmlFor="currency">Currency</label>
+                                    <select id="currency" className="form-control" defaultValue={editingExpense?.currency || 'CAD'}>
+                                        {currencies.map(c => (
+                                            <option key={c.code} value={c.code}>{c.code} ({c.symbol}) - {c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label htmlFor="date">Date</label>
+                                    <input id="date" type="date" className="form-control" defaultValue={editingExpense?.date || new Date().toISOString().split('T')[0]} />
+                                </div>
+                                <div className="form-group">
+                                    <label htmlFor="description">Description</label>
+                                    <input id="description" type="text" className="form-control" defaultValue={editingExpense?.description || ''} placeholder="Optional" />
+                                </div>
+                                <div className="form-group checkbox-group">
+                                    <input id="count-weekly" type="checkbox" defaultChecked={editingExpense ? editingExpense.countWeekly : true} />
+                                    <label htmlFor="count-weekly">Count towards weekly spent</label>
+                                </div>
+                                <div className="form-group checkbox-group">
+                                    <input id="recurring" type="checkbox" defaultChecked={editingExpense?.recurring} />
+                                    <label htmlFor="recurring">Recurring Monthly</label>
+                                </div>
+                                <div id="recurring-options" style={{ display: editingExpense?.recurring ? 'block' : 'none' }}>
+                                    <label>Recurring Period</label>
+                                    <div className="form-group">
+                                        <label htmlFor="recurring-start">Start Date</label>
+                                        <input id="recurring-start" type="date" className="form-control" defaultValue={editingExpense?.recurring?.start || new Date().toISOString().split('T')[0]} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label htmlFor="recurring-end">End Date (optional)</label>
+                                        <input id="recurring-end" type="date" className="form-control" defaultValue={editingExpense?.recurring?.end || ''} disabled={editingExpense?.recurring?.forever} />
+                                    </div>
+                                    <div className="checkbox-group">
+                                        <input id="recurring-forever" type="checkbox" defaultChecked={editingExpense?.recurring?.forever} />
+                                        <label htmlFor="recurring-forever">Forever</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={saveExpense} className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }}>Save</button>
+                        </>
+                    )}
+                    {type === 'recurring-list' && (
+                        <>
+                            <div className="modal-header">
+                                <h3 className="modal-title">Recurring Expenses</h3>
+                                <button onClick={onClose} className="close-modal" aria-label="Close modal">&times;</button>
+                            </div>
+                            {state.expenses.filter(exp => exp.recurring).length === 0 ? (
+                                <div className="empty-state">
+                                    <i className="fas fa-sync-alt"></i>
+                                    <p>No recurring expenses yet. Add one in the expense form!</p>
+                                </div>
+                            ) : (
+                                <div className="expense-table-container">
+                                    <table className="expense-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Category</th>
+                                                <th>Subcategory</th>
+                                                <th>Amount</th>
+                                                <th>Period</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {state.expenses.filter(exp => exp.recurring).map(exp => (
+                                                <tr key={exp.id}>
+                                                    <td data-label="Category">{exp.category}</td>
+                                                    <td data-label="Subcategory">{exp.subcategory}</td>
+                                                    <td data-label="Amount">
+                                                        <span className="currency-badge">{exp.symbol}</span>
+                                                        {exp.amount.toFixed(2)}
+                                                    </td>
+                                                    <td data-label="Period">From {exp.recurring.start} to {exp.recurring.end || 'forever'}</td>
+                                                    <td data-label="Actions" style={{ textAlign: 'right' }}>
+                                                        <button onClick={() => editExpense(exp.id)} className="action-btn edit-btn" aria-label="Edit expense">
+                                                            <i className="fas fa-edit"></i>
+                                                        </button>
+                                                        <button onClick={() => deleteExpense(exp.id)} className="action-btn delete-btn" aria-label="Delete expense">
+                                                            <i className="fas fa-trash"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // --------- Derived values for replacement sections ----------
+    const summary = getSummary();
+    const baseSymbol = currencies.find(c => c.code === state.baseCurrency)?.symbol || 'C$';
+    const currentSubs = state.categories[state.mode].find(c => c.name === state.currentCategory)?.subcategories || [];
+    const filtered = state.expenses.filter(e =>
+        e.mode === state.mode &&
+        e.category === state.currentCategory &&
+        (state.currentSubcategory ? e.subcategory === state.currentSubcategory : true)
+    );
+
+    // Main render
+    return (
+        <ErrorBoundary>
+            <div className="container">
+                <div className="header fade-in">
+
+                    <div className="controls">
+                        <button onClick={toggleMode} className="btn" title={state.mode === 'normal' ? 'Switch to Travel Mode' : 'Switch to Normal Mode'} aria-label="Toggle mode">
+                            <i className={`fas ${state.mode === 'normal' ? 'fa-plane' : 'fa-home'}`}></i>
+                            <span>{state.mode === 'normal' ? 'Travel' : 'Normal'}</span>
+                        </button>
+                        <button onClick={toggleCharts} className="btn" title={state.showCharts ? 'Hide Charts' : 'Show Charts'} aria-label="Toggle charts">
+                            <i className="fas fa-chart-pie"></i>
+                            <span>{state.showCharts ? 'Hide Charts' : 'Charts'}</span>
+                        </button>
+                        <button onClick={() => openModal('set-budgets')} className="btn" title="Set Budgets" aria-label="Set budgets">
+                            <i className="fas fa-cog"></i>
+                            <span>Budgets</span>
+                        </button>
+                        <button onClick={() => openModal('recurring-list')} className="btn" title="View Recurring Expenses" aria-label="View recurring expenses">
+                            <i className="fas fa-sync-alt"></i>
+                            <span>Recurring</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mode-indicator fade-in">
+                    <i className={`fas ${state.mode === 'normal' ? 'fa-home' : 'fa-plane'}`}></i>
+                    <span>{state.mode.charAt(0).toUpperCase() + state.mode.slice(1)} Mode</span>
+                </div>
+
+                {state.showCharts && (
+                    <div className="card fade-in">
+                        <div className="card-header">
+                            <div className="card-title">Analytics</div>
+                        </div>
+                        {state.expenses.filter(exp => exp.mode === state.mode).length === 0 ? (
+                            <div className="empty-state">
+                                <i className="fas fa-chart-pie"></i>
+                                <p>No expenses yet. Add some to see insights!</p>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="chart-container">
+                                    <h3>Category Distribution</h3>
+                                    <canvas ref={chartRef}></canvas>
+                                </div>
+                                {state.categories[state.mode].map(cat => {
+                                    const subTotals = {};
+                                    state.expenses
+                                        .filter(exp => exp.mode === state.mode && exp.category === cat.name)
+                                        .forEach(exp => {
+                                            subTotals[exp.subcategory] = (subTotals[exp.subcategory] || 0) + convertToBase(exp.amount, exp.currency);
+                                        });
+                                    return Object.keys(subTotals).length > 0 ? (
+                                        <div key={cat.name} className="category-chart">
+                                            <h3>{cat.name} Breakdown</h3>
+                                            <div className="chart-container">
+                                                <canvas ref={el => (categoryChartRefs.current[cat.name] = el)}></canvas>
+                                            </div>
+                                        </div>
+                                    ) : null;
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className="card fade-in">
+                    <div className="card-header">
+                        <div className="card-title">Summary - {state.mode.charAt(0).toUpperCase() + state.mode.slice(1)} Mode</div>
+                    </div>
+                    <div className="summary-grid">
+                        <div className="summary-item">
+                            <div className="summary-label">{state.mode === 'normal' ? 'Paycheck' : 'Budget'}</div>
+                            <div className="summary-value">{baseSymbol}{summary.budget.toFixed(2)}</div>
+                            <div className="progress-bar">
+                                <div className="progress-bar-fill" style={{ width: `${Math.min((summary.total / (summary.budget || 1)) * 100, 100)}%` }}></div>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">{((summary.total / (summary.budget || 1)) * 100).toFixed(1)}% Used</div>
+                        </div>
+                        <div className="summary-item">
+                            <div className="summary-label">{state.mode === 'normal' ? 'Total Expenses' : 'Budget Spent'}</div>
+                            <div className="summary-value">{baseSymbol}{summary.total.toFixed(2)}</div>
+                        </div>
+                        <div className="summary-item">
+                            <div className="summary-label">Weekly Spent / Budget</div>
+                            <div className="summary-value">{baseSymbol}{summary.weeklySpent.toFixed(2)} / {baseSymbol}{summary.weeklyBudget.toFixed(2)}</div>
+                            <div className="progress-bar">
+                                <div className="progress-bar-fill" style={{ width: `${Math.min((summary.weeklySpent / (summary.weeklyBudget || 1)) * 100, 100)}%` }}></div>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">{((summary.weeklySpent / (summary.weeklyBudget || 1)) * 100).toFixed(1)}% Used</div>
+                        </div>
+                    </div>
+                    <div className="category-totals">
+                        <h4 style={{ marginBottom: '0.75rem' }}>Category Totals:</h4>
+                        {state.expenses.filter(exp => exp.mode === state.mode).length === 0 ? (
+                            <p>No expenses yet.</p>
+                        ) : (
+                            Object.entries(
+                                state.expenses
+                                    .filter(exp => exp.mode === state.mode)
+                                    .reduce((acc, exp) => {
+                                        acc[exp.category] = (acc[exp.category] || 0) + convertToBase(exp.amount, exp.currency);
+                                        return acc;
+                                    }, {})
+                            ).map(([cat, total]) => (
+                                <div key={cat} className="category-total-item">
+                                    <span className="category-total-name">{cat}</span>
+                                    <span className="category-total-amount">{baseSymbol}{total.toFixed(2)}</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* CATEGORIES CARD */}
+                <div className="card fade-in">
+                    <div className="card-header">
+                        <div className="card-title">Categories</div>
+                    </div>
+
+                    <div className="category-grid">
+                        {state.categories[state.mode].map(cat => (
+                            <button
+                                key={cat.name}
+                                className={`category-item ${state.currentCategory === cat.name ? 'active' : ''}`}
+                                onClick={() => setState(prev => ({ ...prev, currentCategory: cat.name, currentSubcategory: null }))}
+                            >
+                                <i className={`fas ${categoryIcons[cat.name] || 'fa-folder'}`}></i>
+                                <span>{cat.name}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <button
+                        className="btn btn-primary"
+                        style={{ marginTop: '.75rem', width: '100%' }}
+                        onClick={() => openModal('add-category')}
+                    >
+                        <i className="fas fa-plus"></i>
+                        <span>Add Category</span>
+                    </button>
+                </div>
+
+                {/* ======= Unified Subcategories + Expenses (improved design) ======= */}
+                <div className="card fade-in">
+                    <div className="card-header">
+                        <div className="card-title">Subcategories &amp; Expenses</div>
+                        <div style={{ display:'flex', gap:'.5rem' }}>
+                            <button className="btn btn-primary" onClick={() => openModal('add-subcategory')} aria-label="Add subcategory">
+                                <i className="fas fa-plus"></i><span>Add Subcategory</span>
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() =>
+                                    state.currentSubcategory
+                                        ? openModal('add-expense')
+                                        : setState(prev => ({ ...prev, error: 'Please select a subcategory first' }))
+                                }
+                                aria-label="Add expense"
+                            >
+                                <i className="fas fa-plus"></i><span>Add Expense</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Segmented tabs: All + each subcategory */}
+                    <div className="tabs">
+                        <div
+                            className={`tab ${state.currentSubcategory === null ? 'active' : ''}`}
+                            onClick={() => setState(prev => ({ ...prev, currentSubcategory: null }))}
+                        >
+                            All
+                        </div>
+                        {currentSubs.map(sub => (
+                            <div
+                                key={sub}
+                                className={`tab ${state.currentSubcategory === sub ? 'active' : ''}`}
+                                onClick={() => setState(prev => ({ ...prev, currentSubcategory: sub }))}
+                            >
+                                {sub}
+                            </div>
+                        ))}
+                    </div>
+
+                    {state.error && <div className="error-message">{state.error}</div>}
+
+                    {/* If a specific subcategory is selected, show a focused table */}
+                    {state.currentSubcategory ? (
+                        <>
+                            {filtered.length === 0 ? (
+                                <div className="empty-state">
+                                    <i className="fas fa-list"></i>
+                                    <p>No expenses in this subcategory yet.</p>
+                                </div>
+                            ) : (
+                                <div className="expense-table-container">
+                                    <table className="expense-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Amount</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Weekly</th>
+                                                <th>Recurring</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filtered.map(exp => (
+                                                <tr key={exp.id}>
+                                                    <td data-label="Amount">
+                                                        <span className="currency-badge">{exp.symbol}</span>
+                                                        {Number(exp.amount).toFixed(2)}
+                                                    </td>
+                                                    <td data-label="Date">{exp.date}</td>
+                                                    <td data-label="Description">{exp.description}</td>
+                                                    <td data-label="Weekly">{exp.countWeekly ? <i className="fas fa-check" title="Counts towards weekly"></i> : ''}</td>
+                                                    <td data-label="Recurring">{exp.recurring ? <i className="fas fa-sync-alt" title={`Recurring from ${exp.recurring.start} to ${exp.recurring.end || 'forever'}`}></i> : ''}</td>
+                                                    <td data-label="Actions" style={{ textAlign: 'right' }}>
+                                                        <button onClick={() => editExpense(exp.id)} className="action-btn edit-btn" aria-label="Edit expense">
+                                                            <i className="fas fa-edit"></i>
+                                                        </button>
+                                                        <button onClick={() => deleteExpense(exp.id)} className="action-btn delete-btn" aria-label="Delete expense">
+                                                            <i className="fas fa-trash"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        /* All view: grouped by subcategory with per-group totals */
+                        <>
+                            {state.expenses.filter(exp => exp.mode === state.mode && exp.category === state.currentCategory).length === 0 ? (
+                                <div className="empty-state">
+                                    <i className="fas fa-list"></i>
+                                    <p>No expenses in this category yet.</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    {Object.entries(
+                                        state.expenses
+                                            .filter(exp => exp.mode === state.mode && exp.category === state.currentCategory)
+                                            .reduce((acc, exp) => {
+                                                if (!acc[exp.subcategory]) acc[exp.subcategory] = [];
+                                                acc[exp.subcategory].push(exp);
+                                                return acc;
+                                            }, {})
+                                    ).map(([subcat, exps]) => {
+                                        const subTotal = exps.reduce((sum, exp) => sum + convertToBase(exp.amount, exp.currency), 0);
+                                        return (
+                                            <div key={subcat} className="subcat-group">
+                                                <h4 style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                                                    <span>{subcat}</span>
+                                                    <span> Total: {baseSymbol}{subTotal.toFixed(2)}</span>
+                                                </h4>
+                                                <div className="expense-table-container">
+                                                    <table className="expense-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Amount</th>
+                                                                <th>Date</th>
+                                                                <th>Description</th>
+                                                                <th>Weekly</th>
+                                                                <th>Recurring</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {exps.map(exp => (
+                                                                <tr key={exp.id}>
+                                                                    <td data-label="Amount">
+                                                                        <span className="currency-badge">{exp.symbol}</span>
+                                                                        {Number(exp.amount).toFixed(2)}
+                                                                    </td>
+                                                                    <td data-label="Date">{exp.date}</td>
+                                                                    <td data-label="Description">{exp.description}</td>
+                                                                    <td data-label="Weekly">{exp.countWeekly ? <i className="fas fa-check" title="Counts towards weekly"></i> : ''}</td>
+                                                                    <td data-label="Recurring">{exp.recurring ? <i className="fas fa-sync-alt" title={`Recurring from ${exp.recurring.start} to ${exp.recurring.end || 'forever'}`}></i> : ''}</td>
+                                                                    <td data-label="Actions" style={{ textAlign: 'right' }}>
+                                                                        <button onClick={() => editExpense(exp.id)} className="action-btn edit-btn" aria-label="Edit expense">
+                                                                            <i className="fas fa-edit"></i>
+                                                                        </button>
+                                                                        <button onClick={() => deleteExpense(exp.id)} className="action-btn delete-btn" aria-label="Delete expense">
+                                                                            <i className="fas fa-trash"></i>
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+                {/* ======= End unified section ======= */}
+
+                <Modal type={state.modal} onClose={closeModal} />
+            </div>
+        </ErrorBoundary>
+    );
+}
+
+// Render the app
+ReactDOM.render(<App />, document.getElementById('root'));
+
+
+</script>
+
+</body>
+
 
 <?php require 'app/views/templates/footer.php'; ?>

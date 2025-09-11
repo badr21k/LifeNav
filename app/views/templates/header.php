@@ -52,6 +52,10 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           <a class="nav-link<?= $active('essentials') ?>" href="/essentials">Essentials</a>
         </li>
 
+          <li class="nav-item">
+            <a class="nav-link<?= $active('finance') ?>" href="/finance">Finance</a>
+          </li>
+
       <!-- Right -->
       <div class="d-flex align-items-center">
         <span class="navbar-text me-2">
