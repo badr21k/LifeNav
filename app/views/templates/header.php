@@ -33,6 +33,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --shadow-sm:0 2px 4px rgba(0,0,0,.06); --shadow-md:0 10px 20px rgba(2,6,12,.08);
         --header-h:64px;
         --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        --radius-sm:.5rem; --radius-md:.75rem; --radius-lg:1rem;
+        --transition: all .25s cubic-bezier(.4,0,.2,1);
       }
       [data-theme="dark"]{
         --primary:#4ca89b; --primary-dark:#3b867b; --primary-light:#1a3c34;
