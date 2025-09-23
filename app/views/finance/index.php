@@ -1,4 +1,5 @@
 <?php require 'app/views/templates/header.php'; ?>
+<?php require 'app/views/partials/loader.php'; ?>
 
 <head>
     <meta charset="UTF-8">
@@ -452,6 +453,37 @@
         .progress-fill.shifts {
             background: var(--primary);
         }
+
+        /* Currency search enhanced styles */
+        .currency-selector-wrapper { display: flex; gap: .5rem; align-items: center; position: relative; }
+        .currency-typeahead {
+            padding: 0.6rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--card);
+            min-width: 240px;
+            box-shadow: var(--shadow-sm);
+        }
+        .currency-typeahead:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(44,107,95,0.12); }
+        .currency-dropdown {
+            position: absolute;
+            top: 100%; left: 0;
+            width: 100%;
+            max-height: 260px;
+            overflow: auto;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            margin-top: .35rem;
+            display: none;
+            z-index: 60;
+        }
+        .currency-dropdown.open { display: block; }
+        .currency-item { display: flex; justify-content: space-between; align-items: center; padding: .5rem .75rem; cursor: pointer; }
+        .currency-item:hover, .currency-item.active { background: var(--primary-light); }
+        .currency-item .left { display: flex; gap: .5rem; align-items: center; font-weight: 600; }
+        .currency-item .right { color: var(--text-light); font-size: .9rem; }
 
         /* Mobile Responsive Improvements */
         @media (max-width: 768px) {
@@ -1088,8 +1120,8 @@
                     <i class="fas fa-moon"></i>
                 </button>
                 <div class="currency-selector-wrapper">
-                    <input id="currency-search" class="currency-typeahead" list="currency-list" placeholder="Search currency..." aria-label="Search currency" />
-                    <datalist id="currency-list"></datalist>
+                    <input id="currency-search" class="currency-typeahead" placeholder="Search currency (code or name)…" aria-label="Search currency" autocomplete="off" />
+                    <div id="currency-dropdown" class="currency-dropdown" role="listbox" aria-label="Currencies"></div>
                     <select id="base-currency-selector" class="currency-selector" aria-label="Base currency">
                         <option value="USD">USD</option>
                         <option value="EUR">EUR</option>
@@ -1490,7 +1522,8 @@
         const themeToggle = document.getElementById('theme-toggle');
         const baseCurrencySelector = document.getElementById('base-currency-selector');
         const currencySearch = document.getElementById('currency-search');
-        const currencyList = document.getElementById('currency-list');
+        const currencyDropdown = document.getElementById('currency-dropdown');
+        let currencyOptions = [];
         const modal = document.getElementById('modal');
         const paymentModal = document.getElementById('payment-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -1508,14 +1541,9 @@
 
         // CSRF + API helpers
         const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
-        const overlayEl = document.createElement('div');
-        overlayEl.id = 'global-spinner';
-        overlayEl.className = 'loading-overlay';
-        overlayEl.innerHTML = '<div class="loader-card" role="status" aria-live="polite"><div class="spinner" aria-hidden="true"></div><div class="loader-text">Loading...</div></div>';
-        document.addEventListener('DOMContentLoaded', () => { document.body.appendChild(overlayEl); });
         let activeRequests = 0;
-        function beginLoad(){ activeRequests++; overlayEl.classList.add('active'); }
-        function endLoad(){ activeRequests = Math.max(0, activeRequests-1); if(activeRequests===0) overlayEl.classList.remove('active'); }
+        function beginLoad(){ activeRequests++; try{ window.GlobalLoader?.show(); }catch(e){} }
+        function endLoad(){ activeRequests = Math.max(0, activeRequests-1); try{ window.GlobalLoader?.hide(); }catch(e){} }
 
         // Cross-tab/channel sync
         const financeChannel = new BroadcastChannel('lifenav_finance');
@@ -1545,18 +1573,48 @@
                 try { await apiSend('PUT','/finance/api/settings',{ default_currency: financeData.currency }); } catch(_e){}
             });
             
-            // Currency typeahead: when user selects from datalist, sync the select and persist
-            currencySearch.addEventListener('change', async (e) => {
-                const val = e.target.value || '';
-                // Expect formats like "USD — US Dollar"; extract leading 3-letter code
-                const match = val.match(/^([A-Z]{3})\b/);
-                const code = match ? match[1] : '';
-                if (code) {
-                    baseCurrencySelector.value = code;
-                    financeData.currency = code;
-                    updateUI();
-                    saveData();
-                    try { await apiSend('PUT','/finance/api/settings',{ default_currency: financeData.currency }); } catch(_e){}
+            // Currency typeahead: custom dropdown
+            function renderCurrencyResults(items, activeIndex = -1){
+                if (!items.length) { currencyDropdown.classList.remove('open'); currencyDropdown.innerHTML=''; return; }
+                currencyDropdown.innerHTML = items.map((c,i)=>`
+                    <div class="currency-item ${i===activeIndex?'active':''}" data-code="${c.code}" role="option" aria-selected="${i===activeIndex}">
+                        <div class="left"><span>${c.symbol||''}</span><span>${c.code}</span></div>
+                        <div class="right">${c.name}</div>
+                    </div>
+                `).join('');
+                currencyDropdown.classList.add('open');
+            }
+            let activeIdx = -1; let currentItems = [];
+            function filterCurrencies(q){
+                const s = (q||'').trim().toLowerCase();
+                if (!s) { currencyDropdown.classList.remove('open'); currencyDropdown.innerHTML=''; activeIdx=-1; currentItems=[]; return; }
+                currentItems = currencyOptions.filter(c => c.code.toLowerCase().includes(s) || (c.name||'').toLowerCase().includes(s)).slice(0, 12);
+                activeIdx = 0;
+                renderCurrencyResults(currentItems, activeIdx);
+            }
+            async function applyCurrency(code){
+                if (!code) return;
+                baseCurrencySelector.value = code;
+                financeData.currency = code;
+                updateUI();
+                saveData();
+                try { await apiSend('PUT','/finance/api/settings',{ default_currency: financeData.currency }); } catch(_e){}
+            }
+            currencySearch.addEventListener('input', (e)=> filterCurrencies(e.target.value));
+            currencySearch.addEventListener('keydown', async (e)=>{
+                if (!currencyDropdown.classList.contains('open')) return;
+                if (e.key==='ArrowDown'){ e.preventDefault(); activeIdx=Math.min(activeIdx+1, currentItems.length-1); renderCurrencyResults(currentItems, activeIdx); }
+                else if (e.key==='ArrowUp'){ e.preventDefault(); activeIdx=Math.max(activeIdx-1, 0); renderCurrencyResults(currentItems, activeIdx); }
+                else if (e.key==='Enter'){ e.preventDefault(); const c=currentItems[activeIdx]; if(c){ await applyCurrency(c.code); currencyDropdown.classList.remove('open'); }}
+                else if (e.key==='Escape'){ currencyDropdown.classList.remove('open'); }
+            });
+            document.addEventListener('click', async (e)=>{
+                if (e.target.closest('#currency-dropdown .currency-item')){
+                    const code = e.target.closest('.currency-item').getAttribute('data-code');
+                    await applyCurrency(code);
+                    currencyDropdown.classList.remove('open');
+                } else if (!e.target.closest('.currency-selector-wrapper')) {
+                    currencyDropdown.classList.remove('open');
                 }
             });
             
@@ -1579,17 +1637,13 @@
         async function loadCurrencies() {
             try {
                 const list = await apiGet('/finance/api/currencies');
+                currencyOptions = Array.isArray(list) ? list : [];
                 baseCurrencySelector.innerHTML = '';
-                currencyList.innerHTML = '';
                 list.forEach(c => {
                     const option = document.createElement('option');
                     option.value = c.code;
                     option.textContent = `${c.code} — ${c.name}`;
                     baseCurrencySelector.appendChild(option);
-                    const d = document.createElement('option');
-                    d.value = `${c.code} — ${c.name}`;
-                    d.label = c.symbol ? `${c.symbol}` : c.code;
-                    currencyList.appendChild(d);
                 });
                 // Load server default currency if available
                 try {

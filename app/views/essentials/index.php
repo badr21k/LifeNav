@@ -1,5 +1,6 @@
 
 <?php require 'app/views/templates/header.php'; ?>
+<?php require 'app/views/partials/loader.php'; ?>
 
 
 <head>
@@ -881,19 +882,23 @@
         // CSRF token for API calls
         const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
         async function apiGet(path) {
-            const res = await fetch(path, { credentials: 'same-origin' });
-            if (!res.ok) throw new Error('API GET ' + path + ' failed: ' + res.status);
-            return res.json();
+            try { window.GlobalLoader?.show();
+                const res = await fetch(path, { credentials: 'same-origin' });
+                if (!res.ok) throw new Error('API GET ' + path + ' failed: ' + res.status);
+                return res.json();
+            } finally { window.GlobalLoader?.hide(); }
         }
         async function apiSend(method, path, body) {
-            const res = await fetch(path, {
-                method,
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-                credentials: 'same-origin',
-                body: body ? JSON.stringify(body) : null
-            });
-            if (!res.ok) { const t = await res.text(); throw new Error(method+' '+path+' failed: '+res.status+' '+t); }
-            return res.status===204 ? null : res.json();
+            try { window.GlobalLoader?.show();
+                const res = await fetch(path, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+                    credentials: 'same-origin',
+                    body: body ? JSON.stringify(body) : null
+                });
+                if (!res.ok) { const t = await res.text(); throw new Error(method+' '+path+' failed: '+res.status+' '+t); }
+                return res.status===204 ? null : res.json();
+            } finally { window.GlobalLoader?.hide(); }
         }
 
 
@@ -1060,7 +1065,7 @@ function App() {
                 subcategory: r.subcategory_name || 'Other',
                 amount: (Number(r.amount_cents)||0)/100,
                 currency: r.currency || 'CAD',
-                symbol: currencies.find(c=>c.code===(r.currency||'CAD'))?.symbol || 'C$',
+                symbol: (state.currencies.find(c=>c.code===(r.currency||'CAD'))?.symbol) || 'C$',
                 date: r.date,
                 description: r.note || r.merchant || '',
                 countWeekly: true,
