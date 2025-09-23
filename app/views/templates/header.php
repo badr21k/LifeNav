@@ -102,6 +102,17 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           var bsCollapse = null;
           try { bsCollapse = (window.bootstrap && bootstrap.Collapse) ? new bootstrap.Collapse(navEl, { toggle: false }) : null; } catch(_) {}
           var isClosing = false; var closingTimer = null;
+          var togglerHadDataAttr = false;
+          function beginClosingDebounce(){
+            isClosing = true;
+            if (closingTimer) clearTimeout(closingTimer);
+            closingTimer = setTimeout(function(){
+              isClosing = false;
+              try { if (toggler) toggler.style.pointerEvents = ''; } catch(_) {}
+              try { if (toggler && togglerHadDataAttr) { toggler.setAttribute('data-bs-toggle','collapse'); togglerHadDataAttr = false; } } catch(_) {}
+              closingTimer = null;
+            }, 800);
+          }
           function closeMenu(){
             try { if (bsCollapse) { bsCollapse.hide(); return; } } catch(_) {}
             // Fallback if Bootstrap isn't ready: manually collapse
@@ -112,27 +123,33 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
               toggler.blur();
               // prevent immediate re-open by disabling pointer events briefly
               try { toggler.style.pointerEvents = 'none'; } catch(_) {}
+              // Temporarily remove data-bs-toggle to avoid Bootstrap re-trigger
+              try { if (toggler.getAttribute('data-bs-toggle')) { togglerHadDataAttr = true; toggler.removeAttribute('data-bs-toggle'); } } catch(_) {}
             }
             // Debounce to avoid immediate re-open from bubbling
-            isClosing = true;
-            if (closingTimer) clearTimeout(closingTimer);
-            closingTimer = setTimeout(function(){
-              isClosing = false;
-              try { if (toggler) toggler.style.pointerEvents = ''; } catch(_) {}
-            }, 500);
+            beginClosingDebounce();
           }
 
           // Intercept toggler while closing
           if (toggler){
-            ['click','touchstart'].forEach(function(evt){
+            ['click','touchstart','pointerdown'].forEach(function(evt){
               toggler.addEventListener(evt, function(e){ if(isClosing){ e.preventDefault(); e.stopPropagation(); } }, true);
             });
           }
 
-          // Close on nav link tap
+          // Close on nav link tap; on mobile, delay navigation slightly to avoid re-open race
           navEl.addEventListener('click', function(e){
             var a = e.target.closest('a.nav-link');
-            if (a) closeMenu();
+            if (!a) return;
+            var isMobile = window.innerWidth < 992;
+            if (isMobile && navEl.classList.contains('show')){
+              e.preventDefault();
+              var href = a.getAttribute('href');
+              closeMenu();
+              setTimeout(function(){ window.location.href = href; }, 200);
+              return;
+            }
+            closeMenu();
           });
           // Close when clicking outside
           document.addEventListener('click', function(e){
@@ -159,6 +176,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
                 return false;
               }
             });
+            navEl.addEventListener('hide.bs.collapse', function(){ beginClosingDebounce(); });
             navEl.addEventListener('hidden.bs.collapse', function(){
               // cleanup closing flag if collapse finished earlier
               if (isClosing && closingTimer==null){ isClosing = false; try { if (toggler) toggler.style.pointerEvents = ''; } catch(_) {} }
@@ -204,7 +222,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
 <nav class="navbar navbar-expand-lg navbar-light navbar-modern">
   <div class="container-fluid">
     <a class="navbar-brand" href="/home">
-      <span class="brand-icon">LN</span>
+      <span class="brand-icon"></span>
       <span>LifeNav</span>
     </a>
 
