@@ -15,7 +15,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
 <head>
     <meta charset="UTF-8">
     <title><?= isset($title) ? htmlspecialchars($title) . ' — ' : '' ?>LifeNav</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -28,415 +28,512 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
       :root {
-        --primary: #2c6b5f;
-        --primary-dark: #1f4b43;
-        --primary-light: #e6f0ee;
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --primary-light: #dbeafe;
+        --primary-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
         --text: #111827;
         --text-light: #6b7280;
+        --text-lighter: #9ca3af;
         --card: #ffffff;
         --background: #f8fafc;
         --border: #e5e7eb;
-        --shadow-sm: 0 2px 4px rgba(0,0,0,.06);
-        --shadow-md: 0 10px 20px rgba(2,6,12,.08);
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+        --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.1);
+        --shadow-lg: 0 20px 40px -10px rgba(0,0,0,0.15);
         --header-h: 72px;
         --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
         --radius-sm: .5rem;
         --radius-md: .75rem;
         --radius-lg: 1rem;
-        --transition: all .3s cubic-bezier(.4,0,.2,1);
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
+      
       [data-theme="dark"] {
-        --primary: #4ca89b;
-        --primary-dark: #3b867b;
-        --primary-light: #1a3c34;
-        --text: #f3f4f6;
+        --primary: #3b82f6;
+        --primary-dark: #2563eb;
+        --primary-light: #1e3a8a;
+        --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+        --text: #f9fafb;
         --text-light: #d1d5db;
-        --card: #0f172a;
-        --background: #0b1220;
-        --border: #1f2a44;
-        --shadow-sm: 0 2px 4px rgba(0,0,0,.4);
-        --shadow-md: 0 10px 20px rgba(0,0,0,.5);
+        --text-lighter: #9ca3af;
+        --card: #111827;
+        --background: #0f172a;
+        --border: #374151;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+        --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.4);
+        --shadow-lg: 0 20px 40px -10px rgba(0,0,0,0.5);
       }
-      .navbar.navbar-modern {
-        position: sticky;
-        top: 0;
-        z-index: 3000;
-        min-height: var(--header-h);
-        display: flex;
-        align-items: center;
-        backdrop-filter: saturate(1.2) blur(12px);
-        background: var(--card) !important;
-        border-bottom: 1px solid var(--border);
-        box-shadow: var(--shadow-sm);
-        padding: 0.5rem 1rem;
+
+      * {
+        box-sizing: border-box;
       }
-      [data-theme="dark"] .navbar.navbar-modern {
-        background: var(--card) !important;
-        box-shadow: var(--shadow-md);
-      }
-      .navbar .navbar-brand {
-        display: flex;
-        align-items: center;
-        gap: .75rem;
-        font-weight: 700;
-        font-size: 1.25rem;
-        letter-spacing: -0.02em;
-        color: var(--text);
-        transition: var(--transition);
-      }
-      .navbar .brand-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: var(--radius-sm);
-        background: var(--primary);
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1.1rem;
-        box-shadow: 0 4px 12px rgba(44,107,95,.2);
-        transition: var(--transition);
-      }
-      .navbar .brand-icon:hover {
-        transform: scale(1.05);
-      }
-      .navbar .nav-link {
-        font-weight: 600;
-        color: var(--text-light);
-        padding: .75rem 1.25rem;
-        font-size: 1rem;
-        border-radius: var(--radius-sm);
-        transition: var(--transition);
-      }
-      .navbar .nav-link i {
-        margin-right: .5rem;
-        opacity: .85;
-      }
-      .navbar .nav-link.active {
-        color: var(--primary);
-        background: var(--primary-light);
-        box-shadow: inset 0 -2px 0 var(--primary);
-      }
-      .navbar .nav-link:hover {
-        color: var(--primary);
-        background: var(--primary-light);
-      }
-      .navbar .navbar-collapse {
-        display: flex;
-        align-items: center;
-      }
-      .navbar .navbar-nav {
-        flex: 1 1 auto;
-        justify-content: center;
-        gap: 1.5rem;
-      }
-      .navbar .navbar-text {
-        color: var(--text);
-        font-weight: 600;
-      }
-      .user-chip {
-        display: flex;
-        align-items: center;
-        gap: .6rem;
-        font-weight: 600;
-        padding: .5rem 1rem;
-        border-radius: var(--radius-md);
-        transition: var(--transition);
-      }
-      .user-chip:hover {
-        background: var(--primary-light);
-      }
-      .user-chip i {
-        opacity: .85;
-      }
-      .dropdown-menu {
-        z-index: 4000;
-        box-shadow: var(--shadow-md);
-        border: 1px solid var(--border);
-        background: var(--card);
-        border-radius: var(--radius-md);
-        padding: .5rem 0;
-      }
-      .navbar .collapse {
-        overflow: visible;
-      }
+
       body {
         background: var(--background);
         color: var(--text);
         font-family: var(--font-sans);
         padding-top: var(--header-h);
+        line-height: 1.6;
       }
-      a {
+
+      /* Enhanced Modern Header */
+      .navbar-modern {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1030;
+        min-height: var(--header-h);
+        backdrop-filter: saturate(180%) blur(20px);
+        background: rgba(var(--card-rgb), 0.85) !important;
+        border-bottom: 1px solid var(--border);
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+        padding: 0.5rem 0;
+      }
+
+      [data-theme="dark"] .navbar-modern {
+        background: rgba(17, 24, 39, 0.85) !important;
+        backdrop-filter: saturate(180%) blur(20px);
+      }
+
+      .navbar-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 800;
+        font-size: 1.5rem;
+        letter-spacing: -0.02em;
         color: var(--text);
         text-decoration: none;
         transition: var(--transition);
       }
-      a:hover {
-        color: var(--primary);
+
+      .brand-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: var(--primary-gradient);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.2rem;
+        box-shadow: var(--shadow-md);
+        transition: var(--transition);
       }
-      label, .form-label, th {
-        color: var(--text);
+
+      .navbar-brand:hover .brand-icon {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-lg);
       }
-      .dropdown-item {
-        color: var(--text);
-        padding: .5rem 1.25rem;
-        font-weight: 500;
-      }
-      .dropdown-item:hover, .dropdown-item:focus {
-        background: var(--primary-light);
-        color: var(--primary);
-      }
-      .btn, .btn-outline-secondary {
-        color: var(--text);
-        border-color: var(--border);
+
+      .nav-link {
+        font-weight: 600;
+        color: var(--text-light);
+        padding: 0.75rem 1.25rem;
+        font-size: 0.95rem;
         border-radius: var(--radius-md);
         transition: var(--transition);
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
       }
-      .btn:hover, .btn:focus {
-        background: var(--primary-light);
-        border-color: var(--primary);
-        color: var(--primary);
-      }
-      .navbar-toggler {
-        border: none;
-        padding: .5rem;
+
+      .nav-link i {
+        font-size: 1.1rem;
+        opacity: 0.9;
         transition: var(--transition);
       }
+
+      .nav-link:hover {
+        color: var(--primary);
+        background: var(--primary-light);
+        transform: translateY(-1px);
+      }
+
+      .nav-link:hover i {
+        transform: scale(1.1);
+      }
+
+      .nav-link.active {
+        color: var(--primary);
+        background: var(--primary-light);
+        font-weight: 700;
+      }
+
+      .nav-link.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+      }
+
+      /* Enhanced Toggler */
+      .navbar-toggler {
+        border: 1px solid var(--border);
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
+      }
+
       .navbar-toggler:focus {
-        box-shadow: 0 0 0 3px rgba(44,107,95,.2);
+        box-shadow: 0 0 0 2px var(--primary-light);
       }
+
       .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(44,107,95,0.8)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2833, 37, 41, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        transition: var(--transition);
       }
+
       [data-theme="dark"] .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(76,168,155,0.8)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
       }
-      .footer {
-        background: transparent;
-        color: var(--text-light);
-        border-top: 1px solid var(--border);
-        padding: 1.5rem;
-        text-align: center;
+
+      /* User Chip Enhancement */
+      .user-chip {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 50px;
+        background: var(--card);
+        color: var(--text);
+        transition: var(--transition);
+        text-decoration: none;
       }
+
+      .user-chip:hover {
+        border-color: var(--primary);
+        background: var(--primary-light);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .user-chip i {
+        opacity: 0.9;
+        font-size: 1.1rem;
+      }
+
+      /* Dropdown Enhancement */
+      .dropdown-menu {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        background: var(--card);
+        padding: 0.5rem;
+        min-width: 200px;
+      }
+
+      .dropdown-item {
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-sm);
+        font-weight: 500;
+        color: var(--text);
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .dropdown-item:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+        transform: translateX(5px);
+      }
+
+      /* Mobile Menu Enhancements */
+      @media (max-width: 991.98px) {
+        .navbar-collapse {
+          position: fixed;
+          top: var(--header-h);
+          left: 0;
+          right: 0;
+          background: var(--card);
+          border-top: 1px solid var(--border);
+          box-shadow: var(--shadow-lg);
+          max-height: calc(100vh - var(--header-h));
+          overflow-y: auto;
+          padding: 1rem;
+          transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+
+        .navbar-collapse:not(.show) {
+          transform: translateY(-100%);
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .navbar-collapse.show {
+          transform: translateY(0);
+          opacity: 1;
+        }
+
+        .nav-item {
+          margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+          padding: 1rem 1.25rem;
+          border-radius: var(--radius-md);
+          border-left: 3px solid transparent;
+        }
+
+        .nav-link.active {
+          border-left-color: var(--primary);
+          background: var(--primary-light);
+        }
+
+        .user-chip-mobile {
+          width: 100%;
+          justify-content: center;
+          margin: 1rem 0;
+          padding: 1rem;
+        }
+      }
+
+      /* Desktop Layout */
       @media (min-width: 992px) {
         .navbar .container-fluid {
           display: grid;
           grid-template-columns: auto 1fr auto;
           align-items: center;
-          gap: 1.5rem;
+          gap: 2rem;
         }
-        .navbar .navbar-collapse {
-          grid-column: 2;
-          justify-content: center !important;
+
+        .navbar-collapse {
+          display: flex !important;
+          align-items: center;
         }
-        .navbar .d-lg-flex {
-          grid-column: 3;
-        }
-        .navbar .navbar-nav {
-          margin: 0 auto;
+
+        .navbar-nav {
+          flex: 1;
+          justify-content: center;
+          gap: 0.5rem;
         }
       }
-      @media (max-width: 991.98px) {
-        .navbar-collapse {
-          background: var(--card);
-          border-top: 1px solid var(--border);
-          padding: 1rem;
-          margin-top: .5rem;
-          border-radius: var(--radius-md);
-          box-shadow: var(--shadow-sm);
-        }
-        .navbar-nav {
-          gap: .5rem !important;
-        }
-        .nav-link {
-          padding: .75rem 1rem !important;
-          border-radius: var(--radius-sm);
-        }
-        .nav-item.dropdown {
-          margin-top: .5rem;
-        }
+
+      /* Backdrop for mobile when menu is open */
+      .mobile-menu-backdrop {
+        position: fixed;
+        top: var(--header-h);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1029;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease-in-out;
+      }
+
+      .mobile-menu-backdrop.show {
+        opacity: 1;
+        pointer-events: all;
       }
     </style>
-    <script>
-      (function(){
-        const key = 'lifenav_theme';
-        try {
-          let saved = localStorage.getItem(key);
-          if (!saved) {
-            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            saved = prefersDark ? 'dark' : 'light';
-            localStorage.setItem(key, saved);
-          }
-          if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-        } catch(_) {}
-        window.toggleTheme = function() {
-          const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-          if (cur === 'light') document.documentElement.removeAttribute('data-theme');
-          else document.documentElement.setAttribute('data-theme', 'dark');
-          try { localStorage.setItem(key, cur); } catch(_) {}
-        };
-        document.addEventListener('DOMContentLoaded', function() {
-          const navEl = document.getElementById('navbarSupportedContent');
-          const toggler = document.querySelector('.navbar-toggler');
-          if (!navEl) return;
-          navEl.classList.remove('show');
-          if (toggler) {
-            toggler.classList.add('collapsed');
-            toggler.setAttribute('aria-expanded', 'false');
-          }
-          let bsCollapse = null;
-          try {
-            bsCollapse = window.bootstrap && bootstrap.Collapse ? bootstrap.Collapse.getOrCreateInstance(navEl, { toggle: false }) : null;
-          } catch(_) {}
-          let isClosing = false;
-          let closingTimer = null;
-          function closeMenu() {
-            if (isClosing) return;
-            isClosing = true;
-            try {
-              if (bsCollapse) {
-                bsCollapse.hide();
-              } else {
-                navEl.classList.remove('show');
-              }
-            } catch(_) {}
-            if (toggler) {
-              toggler.setAttribute('aria-expanded', 'false');
-              toggler.classList.add('collapsed');
-              toggler.style.pointerEvents = 'none';
-              setTimeout(() => { toggler.style.pointerEvents = ''; }, 300);
-            }
-            if (closingTimer) clearTimeout(closingTimer);
-            closingTimer = setTimeout(() => { isClosing = false; closingTimer = null; }, 300);
-          }
-          if (toggler) {
-            toggler.addEventListener('click', function(e) {
-              if (isClosing) {
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-              }
-            });
-          }
-          navEl.addEventListener('click', function(e) {
-            const a = e.target.closest('a.nav-link');
-            if (!a) return;
-            const isMobile = window.innerWidth < 992;
-            if (isMobile && navEl.classList.contains('show')) {
-              e.preventDefault();
-              const href = a.getAttribute('href');
-              closeMenu();
-              setTimeout(() => { window.location.href = href; }, 150);
-            }
-          });
-          document.addEventListener('click', function(e) {
-            if (!navEl.classList.contains('show')) return;
-            if (!e.target.closest('.navbar')) closeMenu();
-          });
-          document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && navEl.classList.contains('show')) closeMenu();
-          });
-          window.addEventListener('resize', function() {
-            if (window.innerWidth >= 992 && navEl.classList.contains('show')) {
-              closeMenu();
-            }
-          });
-          window.addEventListener('load', function() {
-            try {
-              bsCollapse = window.bootstrap && bootstrap.Collapse ? bootstrap.Collapse.getOrCreateInstance(navEl, { toggle: false }) : bsCollapse;
-            } catch(_) {}
-            if (navEl.classList.contains('show')) closeMenu();
-          });
-          function wireDropdown(triggerId, menuId) {
-            const trigger = document.getElementById(triggerId);
-            const menu = document.getElementById(menuId);
-            if (!trigger || !menu) return;
-            let bsDrop = null;
-            try {
-              bsDrop = window.bootstrap && bootstrap.Dropdown ? bootstrap.Dropdown.getOrCreateInstance(trigger, { autoClose: true }) : null;
-            } catch(_) {}
-            function hideDrop() {
-              try { if (bsDrop) bsDrop.hide(); } catch(_) {}
-            }
-            function focusFirst() {
-              const first = menu.querySelector('.dropdown-item, a[role="menuitem"], button[role="menuitem"]');
-              if (first) first.focus({ preventScroll: true });
-            }
-            trigger.addEventListener('shown.bs.dropdown', function() {
-              trigger.setAttribute('aria-expanded', 'true');
-              focusFirst();
-            });
-            trigger.addEventListener('hidden.bs.dropdown', function() {
-              trigger.setAttribute('aria-expanded', 'false');
-              trigger.focus({ preventScroll: true });
-            });
-            menu.addEventListener('keydown', function(e) {
-              if (e.key === 'Escape') hideDrop();
-            });
-            menu.addEventListener('click', function(e) {
-              if (e.target.closest('.dropdown-item')) {
-                hideDrop();
-                if (navEl.classList.contains('show')) closeMenu();
-              }
-            });
-          }
-          wireDropdown('userMenu', 'userMenuMenu');
-          wireDropdown('userMenuMobile', 'userMenuMobileMenu');
-        });
-      })();
-    </script>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light navbar-modern">
+<!-- Mobile Menu Backdrop -->
+<div class="mobile-menu-backdrop" id="mobileMenuBackdrop"></div>
+
+<nav class="navbar navbar-expand-lg navbar-modern">
   <div class="container-fluid">
     <a class="navbar-brand" href="/home">
       <span class="brand-icon">LN</span>
       <span>LifeNav</span>
     </a>
+
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
             data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
             aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
+
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav mb-2 mb-lg-0">
         <li class="nav-item">
-          <a class="nav-link<?= $active('home') ?>" href="/home"><i class="fa-solid fa-house"></i> Home</a>
+          <a class="nav-link<?= $active('home') ?>" href="/home">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link<?= $active('essentials') ?>" href="/essentials"><i class="fa-solid fa-receipt"></i> Spending</a>
+          <a class="nav-link<?= $active('essentials') ?>" href="/essentials">
+            <i class="fa-solid fa-receipt"></i>
+            <span>Spending</span>
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link<?= $active('finance') ?>" href="/finance"><i class="fa-solid fa-sack-dollar"></i> Earnings</a>
+          <a class="nav-link<?= $active('finance') ?>" href="/finance">
+            <i class="fa-solid fa-sack-dollar"></i>
+            <span>Earnings</span>
+          </a>
         </li>
-        <li class="nav-item dropdown d-lg-none mt-2">
-          <button class="btn btn-outline-secondary btn-sm dropdown-toggle user-chip" type="button" id="userMenuMobile" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="userMenuMobileMenu">
-            <i class="fa-solid fa-user"></i>
-            <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
-          </button>
-          <ul id="userMenuMobileMenu" class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuMobile" role="menu">
-            <li><button class="dropdown-item" type="button" role="menuitem" onclick="toggleTheme()"><i class="fa-solid fa-moon me-2"></i>Toggle Dark Mode</button></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="/logout" role="menuitem"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
-          </ul>
+        
+        <!-- Mobile User Menu -->
+        <li class="nav-item d-lg-none">
+          <div class="dropdown">
+            <button class="btn user-chip user-chip-mobile dropdown-toggle w-100" type="button" 
+                    id="userMenuMobile" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fa-solid fa-user"></i>
+              <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
+            </button>
+            <ul class="dropdown-menu w-100" aria-labelledby="userMenuMobile">
+              <li><button class="dropdown-item" type="button" onclick="toggleTheme()">
+                <i class="fa-solid fa-moon"></i>Toggle Dark Mode
+              </button></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="/logout">
+                <i class="fa-solid fa-right-from-bracket"></i>Logout
+              </a></li>
+            </ul>
+          </div>
         </li>
       </ul>
     </div>
-    <div class="d-none d-lg-flex align-items-center justify-content-end">
+
+    <!-- Desktop User Menu -->
+    <div class="d-none d-lg-flex align-items-center">
       <div class="dropdown">
-        <button class="btn btn-outline-secondary btn-sm dropdown-toggle user-chip" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="userMenuMenu">
+        <button class="btn user-chip dropdown-toggle" type="button" 
+                id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
           <i class="fa-solid fa-user"></i>
           <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
         </button>
-        <ul id="userMenuMenu" class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu" role="menu">
-          <li><button class="dropdown-item" type="button" onclick="toggleTheme()"><i class="fa-solid fa-moon me-2"></i>Toggle Dark Mode</button></li>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+          <li><button class="dropdown-item" type="button" onclick="toggleTheme()">
+            <i class="fa-solid fa-moon"></i>Toggle Dark Mode
+          </button></li>
           <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item text-danger" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
+          <li><a class="dropdown-item text-danger" href="/logout">
+            <i class="fa-solid fa-right-from-bracket"></i>Logout
+          </a></li>
         </ul>
       </div>
     </div>
   </div>
 </nav>
-</body>
-</html>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (function(){
+    // Theme management (unchanged)
+    const key='lifenav_theme';
+    try {
+      let saved = localStorage.getItem(key);
+      if (!saved) {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        saved = prefersDark ? 'dark' : 'light';
+        localStorage.setItem(key, saved);
+      }
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+    } catch(_) {}
+    
+    window.toggleTheme = function(){
+      const cur = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+      if(cur==='light') document.documentElement.removeAttribute('data-theme'); 
+      else document.documentElement.setAttribute('data-theme','dark');
+      try { localStorage.setItem(key, cur); } catch(_) {}
+    }
+
+    // Enhanced mobile menu handling
+    document.addEventListener('DOMContentLoaded', function(){
+      const navCollapse = document.getElementById('navbarSupportedContent');
+      const toggler = document.querySelector('.navbar-toggler');
+      const backdrop = document.getElementById('mobileMenuBackdrop');
+      
+      if (!navCollapse) return;
+
+      // Initialize Bootstrap collapse
+      const bsCollapse = new bootstrap.Collapse(navCollapse, {
+        toggle: false
+      });
+
+      // Enhanced mobile menu functionality
+      function toggleBackdrop(show) {
+        if (backdrop) {
+          backdrop.classList.toggle('show', show);
+        }
+      }
+
+      // Close menu when clicking on nav links (mobile)
+      navCollapse.addEventListener('click', function(e) {
+        if (e.target.closest('.nav-link') && window.innerWidth < 992) {
+          // Small delay for smooth animation
+          setTimeout(() => {
+            bsCollapse.hide();
+            toggleBackdrop(false);
+          }, 150);
+        }
+      });
+
+      // Close menu when clicking backdrop
+      if (backdrop) {
+        backdrop.addEventListener('click', function() {
+          bsCollapse.hide();
+          toggleBackdrop(false);
+        });
+      }
+
+      // Handle collapse events
+      navCollapse.addEventListener('show.bs.collapse', function() {
+        toggleBackdrop(true);
+        document.body.style.overflow = 'hidden';
+      });
+
+      navCollapse.addEventListener('hide.bs.collapse', function() {
+        toggleBackdrop(false);
+        document.body.style.overflow = '';
+      });
+
+      // Close menu on escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && navCollapse.classList.contains('show')) {
+          bsCollapse.hide();
+          toggleBackdrop(false);
+        }
+      });
+
+      // Auto-close on window resize (if mobile menu is open)
+      window.addEventListener('resize', function() {
+        if (window.innerWidth >= 992 && navCollapse.classList.contains('show')) {
+          bsCollapse.hide();
+          toggleBackdrop(false);
+        }
+      });
+
+      // Enhanced dropdown accessibility
+      function initDropdowns() {
+        const dropdowns = document.querySelectorAll('.dropdown');
+        dropdowns.forEach(dropdown => {
+          const toggle = dropdown.querySelector('.dropdown-toggle');
+          const menu = dropdown.querySelector('.dropdown-menu');
+          
+          if (toggle && menu) {
+            // Keyboard navigation
+            toggle.addEventListener('keydown', function(e) {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const bsDropdown = bootstrap.Dropdown.getInstance(toggle);
+                bsDropdown.toggle();
+              }
+            });
+          }
+        });
+      }
+
+      initDropdowns();
+    });
+  })();
+</script>
