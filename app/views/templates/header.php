@@ -95,15 +95,38 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           var navEl = document.getElementById('navbarSupportedContent');
           var toggler = document.querySelector('.navbar-toggler');
           if (!navEl) return;
+          // Force collapsed state on load
+          navEl.classList.remove('show');
+          if (toggler){ toggler.classList.add('collapsed'); toggler.setAttribute('aria-expanded','false'); }
           // Use Bootstrap Collapse API if available
           var bsCollapse = null;
           try { bsCollapse = (window.bootstrap && bootstrap.Collapse) ? new bootstrap.Collapse(navEl, { toggle: false }) : null; } catch(_) {}
-
+          var isClosing = false; var closingTimer = null;
           function closeMenu(){
             try { if (bsCollapse) { bsCollapse.hide(); return; } } catch(_) {}
             // Fallback if Bootstrap isn't ready: manually collapse
             navEl.classList.remove('show');
-            if (toggler){ toggler.setAttribute('aria-expanded','false'); toggler.classList.add('collapsed'); }
+            if (toggler){
+              toggler.setAttribute('aria-expanded','false');
+              toggler.classList.add('collapsed');
+              toggler.blur();
+              // prevent immediate re-open by disabling pointer events briefly
+              try { toggler.style.pointerEvents = 'none'; } catch(_) {}
+            }
+            // Debounce to avoid immediate re-open from bubbling
+            isClosing = true;
+            if (closingTimer) clearTimeout(closingTimer);
+            closingTimer = setTimeout(function(){
+              isClosing = false;
+              try { if (toggler) toggler.style.pointerEvents = ''; } catch(_) {}
+            }, 500);
+          }
+
+          // Intercept toggler while closing
+          if (toggler){
+            ['click','touchstart'].forEach(function(evt){
+              toggler.addEventListener(evt, function(e){ if(isClosing){ e.preventDefault(); e.stopPropagation(); } }, true);
+            });
           }
 
           // Close on nav link tap
@@ -124,6 +147,23 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           window.addEventListener('resize', function(){
             if (window.innerWidth >= 992) { navEl.classList.remove('show'); if (toggler){ toggler.setAttribute('aria-expanded','false'); toggler.classList.add('collapsed'); } }
           });
+
+          // If Bootstrap events are available, cancel show during closing
+          try{
+            navEl.addEventListener('show.bs.collapse', function(e){
+              if(isClosing){
+                e.preventDefault && e.preventDefault();
+                e.stopImmediatePropagation && e.stopImmediatePropagation();
+                // Force hide again
+                closeMenu();
+                return false;
+              }
+            });
+            navEl.addEventListener('hidden.bs.collapse', function(){
+              // cleanup closing flag if collapse finished earlier
+              if (isClosing && closingTimer==null){ isClosing = false; try { if (toggler) toggler.style.pointerEvents = ''; } catch(_) {} }
+            });
+          }catch(_){ }
 
           // Dropdown accessibility and close behavior for user menus (desktop + mobile)
           function wireDropdown(triggerId, menuId){
