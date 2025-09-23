@@ -1,19 +1,15 @@
-run = "php -S 0.0.0.0:8000 -t ."
+run = "sh -c 'php -S 0.0.0.0:${PORT:-5000} server.php'"
 modules = ["php-8.2", "nix"]
 
 [nix]
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "php -S 0.0.0.0:8000 -t ."]
+run = ["sh", "-c", "php -S 0.0.0.0:${PORT:-5000} server.php"]
 deploymentTarget = "cloudrun"
 
 [[ports]]
 localPort = 5000
-externalPort = 80
-
-[[ports]]
-localPort = 8000
 externalPort = 80
 
 [agent]
@@ -37,7 +33,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "php -S 0.0.0.0:5000 -t ."
+args = "sh -c 'php -S 0.0.0.0:${PORT:-5000} server.php'"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
