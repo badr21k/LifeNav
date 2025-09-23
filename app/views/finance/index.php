@@ -496,6 +496,8 @@
             display: flex;
             gap: 0.25rem;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x proximity;
             padding: 0.5rem;
             background: transparent;
             border: 1px solid var(--border);
@@ -515,6 +517,7 @@
             cursor: pointer;
             color: var(--text-light);
             transition: var(--transition);
+            scroll-snap-align: start;
         }
 
         .tab.active, .tab:hover {
@@ -971,7 +974,8 @@
             }
             .tab {
                 padding: 0.625rem 0.875rem;
-                font-size: 0.875rem;
+                font-size: 0.9rem;
+                min-width: 110px;
             }
             .form-control {
                 padding: 0.625rem;
@@ -1045,6 +1049,9 @@
             .expense-table td[data-label="Actions"]:before {
                 content: none;
             }
+            /* Reduce outer padding on very small screens */
+            body { padding: 1rem; }
+            .header { padding: 1rem; }
         }
     </style>
 </head>
