@@ -21,6 +21,10 @@ class essentials extends Controller {
       switch ($resource) {
         case 'ping':
           return $this->json(['ok'=>true,'tenant_id'=>$tenantId]);
+        case 'recurring_run':
+          if (($method!=='POST' && $method!=='PUT')) return $this->json(['error'=>'Method not allowed'],405);
+          $this->generateRecurring($dbh, $tenantId);
+          return $this->json(['ok'=>true]);
         case 'init':
           if ($method !== 'GET') return $this->json(['error'=>'Method not allowed'],405);
           // categories
@@ -59,6 +63,8 @@ class essentials extends Controller {
               if (!$this->hasColumn($dbh,'expenses','recurring_start')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_start DATE NULL AFTER note"); } catch (Throwable $e) {} }
               if (!$this->hasColumn($dbh,'expenses','recurring_end')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_end DATE NULL AFTER recurring_start"); } catch (Throwable $e) {} }
               if (!$this->hasColumn($dbh,'expenses','recurring_forever')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_forever TINYINT(1) NOT NULL DEFAULT 0 AFTER recurring_end"); } catch (Throwable $e) {} }
+              if (!$this->hasColumn($dbh,'expenses','recurring_day')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_day TINYINT(2) NULL AFTER recurring_forever"); } catch (Throwable $e) {} }
+              if (!$this->hasColumn($dbh,'expenses','generated_from_id')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN generated_from_id INT NULL AFTER recurring_last_ym"); } catch (Throwable $e) {} }
               // ensure count_weekly column exists (idempotent)
               if (!$this->hasColumn($dbh,'expenses','count_weekly')) {
                 try { $dbh->exec("ALTER TABLE expenses ADD COLUMN count_weekly TINYINT(1) NOT NULL DEFAULT 1 AFTER note"); } catch (Throwable $e) { /* ignore */ }
@@ -75,6 +81,7 @@ class essentials extends Controller {
               $recStart = (isset($b['recurring_start']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $b['recurring_start'])) ? $b['recurring_start'] : null;
               $recEnd   = (isset($b['recurring_end'])   && preg_match('/^\d{4}-\d{2}-\d{2}$/', $b['recurring_end'])) ? $b['recurring_end'] : null;
               $recForever = isset($b['recurring_forever']) ? (int)!!$b['recurring_forever'] : 0;
+              $recDay = isset($b['recurring_day']) ? max(1,min(28,(int)$b['recurring_day'])) : 1;
               $userId=$this->userId();
               if ($this->hasColumn($dbh,'expenses','count_weekly')) {
                 $hasRec = $this->hasColumn($dbh,'expenses','recurring_start') && $this->hasColumn($dbh,'expenses','recurring_end') && $this->hasColumn($dbh,'expenses','recurring_forever');
@@ -82,8 +89,10 @@ class essentials extends Controller {
                   // ensure template/last_ym columns
                   if (!$this->hasColumn($dbh,'expenses','recurring_template')) { try { $dbh->exec('ALTER TABLE expenses ADD COLUMN recurring_template TINYINT(1) NOT NULL DEFAULT 0 AFTER recurring_forever'); } catch (Throwable $e) {} }
                   if (!$this->hasColumn($dbh,'expenses','recurring_last_ym')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_last_ym CHAR(7) NULL AFTER recurring_template"); } catch (Throwable $e) {} }
-                  $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,recurring_start,recurring_end,recurring_forever,recurring_template,recurring_last_ym,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
-                  $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly,$recStart,$recEnd,$recForever,1,null]);
+                  if (!$this->hasColumn($dbh,'expenses','recurring_day')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_day TINYINT(2) NULL AFTER recurring_forever"); } catch (Throwable $e) {} }
+                  if (!$this->hasColumn($dbh,'expenses','generated_from_id')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN generated_from_id INT NULL AFTER recurring_last_ym"); } catch (Throwable $e) {} }
+                  $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,recurring_start,recurring_end,recurring_forever,recurring_day,recurring_template,recurring_last_ym,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+                  $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly,$recStart,$recEnd,$recForever,$recDay,1,null]);
                 } else {
                   $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
                   $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly]);
@@ -120,6 +129,7 @@ class essentials extends Controller {
                 $isRecurring = (isset($b['recurring_start']) || isset($b['recurring_end']) || isset($b['recurring_forever'])) ? ((isset($b['recurring_forever']) && $b['recurring_forever']) || !empty($b['recurring_start']) || !empty($b['recurring_end'])) : null;
                 if ($isRecurring !== null) { $fields[]='recurring_template=?'; $vals[]=$isRecurring?1:0; }
               }
+              if ($this->hasColumn($dbh,'expenses','recurring_day') && array_key_exists('recurring_day',$b)) { $fields[]='recurring_day=?'; $vals[]=(int)max(1,min(28,(int)$b['recurring_day'])); }
               if(!$fields) return $this->json(['error'=>'No fields'],400);
               $sql='UPDATE expenses SET '.implode(',', $fields).', updated_at=NOW() WHERE tenant_id=? AND id=?';
               $vals[]=$tenantId; $vals[]=$id; $st=$dbh->prepare($sql); $st->execute($vals);
@@ -163,7 +173,7 @@ class essentials extends Controller {
     } catch (Throwable $e) { return false; }
   }
 
-  // Auto-generate one expense on the 1st of the current month for each recurring template
+  // Auto-generate one expense each month for recurring templates
   private function generateRecurring(PDO $dbh, int $tenantId): void {
     try {
       // ensure needed columns exist
@@ -172,7 +182,9 @@ class essentials extends Controller {
         'recurring_end DATE NULL',
         'recurring_forever TINYINT(1) NOT NULL DEFAULT 0',
         'recurring_template TINYINT(1) NOT NULL DEFAULT 0',
-        'recurring_last_ym CHAR(7) NULL'
+        'recurring_last_ym CHAR(7) NULL',
+        'recurring_day TINYINT(2) NULL',
+        'generated_from_id INT NULL'
       ] as $def) {
         $parts = explode(' ', $def, 2); $col = $parts[0];
         if (!$this->hasColumn($dbh,'expenses',$col)) {
@@ -200,16 +212,20 @@ class essentials extends Controller {
       $templates = $st->fetchAll();
       if (!$templates) return;
 
-      $ins = $dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,created_at,updated_at)
-                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+      $ins = $dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,generated_from_id,created_at,updated_at)
+                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
       $upd = $dbh->prepare('UPDATE expenses SET recurring_last_ym=? WHERE id=? AND tenant_id=?');
 
       foreach ($templates as $t) {
-        // Insert the instance for the current month (on 1st day)
+        // Compute posting date using recurring_day (default 1), capped to month length (use up to day 28 to avoid short months)
+        $day = isset($t['recurring_day']) && (int)$t['recurring_day']>0 ? (int)$t['recurring_day'] : 1;
+        if ($day > 28) $day = 28;
+        $postDate = date('Y-m-d', strtotime($ym . '-' . str_pad((string)$day,2,'0',STR_PAD_LEFT)));
+        // Insert the instance for the current month
         $ins->execute([
           (int)$t['tenant_id'],
           (int)($t['user_id'] ?? 0),
-          $first,
+          $postDate,
           (int)$t['amount_cents'],
           $t['currency'],
           (int)$t['category_id'],
@@ -217,7 +233,8 @@ class essentials extends Controller {
           $t['payment_method_id']!==null ? (int)$t['payment_method_id'] : null,
           $t['merchant'],
           $t['note'],
-          isset($t['count_weekly']) ? (int)$t['count_weekly'] : 1
+          isset($t['count_weekly']) ? (int)$t['count_weekly'] : 1,
+          (int)$t['id']
         ]);
         // Mark template as generated for this month
         $upd->execute([$ym,(int)$t['id'],$tenantId]);

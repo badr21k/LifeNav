@@ -1074,7 +1074,12 @@ function App() {
                 date: r.date,
                 description: r.note || r.merchant || '',
                 countWeekly: r.hasOwnProperty('count_weekly') ? !!r.count_weekly : true,
-                recurring: false
+                recurring: (r.recurring_start || r.recurring_end || r.recurring_forever) ? {
+                    start: r.recurring_start || null,
+                    end: r.recurring_end || null,
+                    forever: !!r.recurring_forever,
+                    day: r.recurring_day ? Number(r.recurring_day) : 1,
+                } : null
             }));
             setState(prev=>({ ...prev, expenses: rows, dataSource: 'Database', maps: { catByName, subByCatName, pmByName } }));
         } catch (e) { console.error(e); }
@@ -1216,17 +1221,6 @@ function App() {
         const category = document.getElementById('modal-category')?.value;
         const subcategory = document.getElementById('modal-subcategory')?.value || null;
         const currency = document.getElementById('currency')?.value || 'CAD';
-        const note = document.getElementById('description')?.value || subcategory || '';
-        const catId = state.maps.catByName[category] || null;
-        const subId = subcategory ? ((state.maps.subByCatName[category]||{})[subcategory] || null) : null;
-        if (!catId) { setState(prev=>({ ...prev, error: 'Unknown category' })); return; }
-
-        const payload = { date: dateInput.value, amount_cents: Math.round(amount*100), currency, category_id: catId, subcategory_id: subId, payment_method_id: null, merchant: '', note, count_weekly: !!document.getElementById('count-weekly')?.checked };
-        try {
-            if (state.editingId) await apiSend('PUT', `/essentials/api/expenses/${encodeURIComponent(state.editingId)}`, payload);
-            else await apiSend('POST', '/essentials/api/expenses', payload);
-            await loadEssentials();
-            setState(prev=>({ ...prev, modal: null, editingId: null, fromRecurringList: false, error: null }));
         } catch (e) { setState(prev=>({ ...prev, error: e.message })); }
     };
 
