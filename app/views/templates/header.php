@@ -48,7 +48,6 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --radius-lg: 1rem;
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
-      
       [data-theme="dark"] {
         --primary: #3b82f6;
         --primary-dark: #2563eb;
@@ -64,11 +63,9 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.4);
         --shadow-lg: 0 20px 40px -10px rgba(0,0,0,0.5);
       }
-
       * {
         box-sizing: border-box;
       }
-
       body {
         background: var(--background);
         color: var(--text);
@@ -76,8 +73,6 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         padding-top: var(--header-h);
         line-height: 1.6;
       }
-
-      /* Enhanced Modern Header */
       .navbar-modern {
         position: fixed;
         top: 0;
@@ -86,18 +81,16 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         z-index: 1030;
         min-height: var(--header-h);
         backdrop-filter: saturate(180%) blur(20px);
-        background: rgba(var(--card-rgb), 0.85) !important;
+        background: rgba(var(--card-rgb, 255, 255, 255), 0.85) !important;
         border-bottom: 1px solid var(--border);
         box-shadow: var(--shadow-sm);
         transition: var(--transition);
         padding: 0.5rem 0;
       }
-
       [data-theme="dark"] .navbar-modern {
         background: rgba(17, 24, 39, 0.85) !important;
         backdrop-filter: saturate(180%) blur(20px);
       }
-
       .navbar-brand {
         display: flex;
         align-items: center;
@@ -109,7 +102,6 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         text-decoration: none;
         transition: var(--transition);
       }
-
       .brand-icon {
         width: 40px;
         height: 40px;
@@ -124,12 +116,10 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         box-shadow: var(--shadow-md);
         transition: var(--transition);
       }
-
       .navbar-brand:hover .brand-icon {
         transform: translateY(-1px);
         box-shadow: var(--shadow-lg);
       }
-
       .nav-link {
         font-weight: 600;
         color: var(--text-light);
@@ -142,29 +132,24 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         align-items: center;
         gap: 0.5rem;
       }
-
       .nav-link i {
         font-size: 1.1rem;
         opacity: 0.9;
         transition: var(--transition);
       }
-
       .nav-link:hover {
         color: var(--primary);
         background: var(--primary-light);
         transform: translateY(-1px);
       }
-
       .nav-link:hover i {
         transform: scale(1.1);
       }
-
       .nav-link.active {
         color: var(--primary);
         background: var(--primary-light);
         font-weight: 700;
       }
-
       .nav-link.active::after {
         content: '';
         position: absolute;
@@ -176,29 +161,22 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         background: var(--primary);
         border-radius: 2px;
       }
-
-      /* Enhanced Toggler */
       .navbar-toggler {
         border: 1px solid var(--border);
         padding: 0.5rem 0.75rem;
         border-radius: var(--radius-sm);
         transition: var(--transition);
       }
-
       .navbar-toggler:focus {
         box-shadow: 0 0 0 2px var(--primary-light);
       }
-
       .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2833, 37, 41, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(33,37,41,0.75)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
         transition: var(--transition);
       }
-
       [data-theme="dark"] .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255,255,255,0.75)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
       }
-
-      /* User Chip Enhancement */
       .user-chip {
         display: flex;
         align-items: center;
@@ -212,20 +190,16 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         transition: var(--transition);
         text-decoration: none;
       }
-
       .user-chip:hover {
         border-color: var(--primary);
         background: var(--primary-light);
         transform: translateY(-1px);
         box-shadow: var(--shadow-sm);
       }
-
       .user-chip i {
         opacity: 0.9;
         font-size: 1.1rem;
       }
-
-      /* Dropdown Enhancement */
       .dropdown-menu {
         border: 1px solid var(--border);
         border-radius: var(--radius-lg);
@@ -234,7 +208,6 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         padding: 0.5rem;
         min-width: 200px;
       }
-
       .dropdown-item {
         padding: 0.75rem 1rem;
         border-radius: var(--radius-sm);
@@ -245,14 +218,11 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         align-items: center;
         gap: 0.75rem;
       }
-
       .dropdown-item:hover {
         background: var(--primary-light);
         color: var(--primary);
         transform: translateX(5px);
       }
-
-      /* Mobile Menu Enhancements */
       @media (max-width: 991.98px) {
         .navbar-collapse {
           position: fixed;
@@ -267,33 +237,27 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           padding: 1rem;
           transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
-
         .navbar-collapse:not(.show) {
           transform: translateY(-100%);
           opacity: 0;
           pointer-events: none;
         }
-
         .navbar-collapse.show {
           transform: translateY(0);
           opacity: 1;
         }
-
         .nav-item {
           margin-bottom: 0.5rem;
         }
-
         .nav-link {
           padding: 1rem 1.25rem;
           border-radius: var(--radius-md);
           border-left: 3px solid transparent;
         }
-
         .nav-link.active {
           border-left-color: var(--primary);
           background: var(--primary-light);
         }
-
         .user-chip-mobile {
           width: 100%;
           justify-content: center;
@@ -301,8 +265,6 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           padding: 1rem;
         }
       }
-
-      /* Desktop Layout */
       @media (min-width: 992px) {
         .navbar .container-fluid {
           display: grid;
@@ -310,20 +272,16 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           align-items: center;
           gap: 2rem;
         }
-
         .navbar-collapse {
           display: flex !important;
           align-items: center;
         }
-
         .navbar-nav {
           flex: 1;
           justify-content: center;
           gap: 0.5rem;
         }
       }
-
-      /* Backdrop for mobile when menu is open */
       .mobile-menu-backdrop {
         position: fixed;
         top: var(--header-h);
@@ -336,7 +294,6 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         pointer-events: none;
         transition: opacity 0.3s ease-in-out;
       }
-
       .mobile-menu-backdrop.show {
         opacity: 1;
         pointer-events: all;
@@ -344,22 +301,18 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     </style>
 </head>
 <body>
-<!-- Mobile Menu Backdrop -->
 <div class="mobile-menu-backdrop" id="mobileMenuBackdrop"></div>
-
 <nav class="navbar navbar-expand-lg navbar-modern">
   <div class="container-fluid">
     <a class="navbar-brand" href="/home">
       <span class="brand-icon">LN</span>
       <span>LifeNav</span>
     </a>
-
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
             data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
             aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
-
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav mb-2 mb-lg-0">
         <li class="nav-item">
@@ -380,8 +333,6 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             <span>Earnings</span>
           </a>
         </li>
-        
-        <!-- Mobile User Menu -->
         <li class="nav-item d-lg-none">
           <div class="dropdown">
             <button class="btn user-chip user-chip-mobile dropdown-toggle w-100" type="button" 
@@ -402,8 +353,6 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         </li>
       </ul>
     </div>
-
-    <!-- Desktop User Menu -->
     <div class="d-none d-lg-flex align-items-center">
       <div class="dropdown">
         <button class="btn user-chip dropdown-toggle" type="button" 
@@ -424,12 +373,12 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     </div>
   </div>
 </nav>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+        crossorigin="anonymous"></script>
 <script>
   (function(){
-    // Theme management (unchanged)
-    const key='lifenav_theme';
+    const key = 'lifenav_theme';
     try {
       let saved = localStorage.getItem(key);
       if (!saved) {
@@ -437,103 +386,92 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         saved = prefersDark ? 'dark' : 'light';
         localStorage.setItem(key, saved);
       }
-      if (saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
     } catch(_) {}
-    
-    window.toggleTheme = function(){
-      const cur = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
-      if(cur==='light') document.documentElement.removeAttribute('data-theme'); 
-      else document.documentElement.setAttribute('data-theme','dark');
+    window.toggleTheme = function() {
+      const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      if (cur === 'light') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', 'dark');
       try { localStorage.setItem(key, cur); } catch(_) {}
-    }
-
-    // Enhanced mobile menu handling
-    document.addEventListener('DOMContentLoaded', function(){
+    };
+    document.addEventListener('DOMContentLoaded', function() {
       const navCollapse = document.getElementById('navbarSupportedContent');
       const toggler = document.querySelector('.navbar-toggler');
       const backdrop = document.getElementById('mobileMenuBackdrop');
-      
       if (!navCollapse) return;
-
-      // Initialize Bootstrap collapse
-      const bsCollapse = new bootstrap.Collapse(navCollapse, {
-        toggle: false
-      });
-
-      // Enhanced mobile menu functionality
+      const bsCollapse = new bootstrap.Collapse(navCollapse, { toggle: false });
       function toggleBackdrop(show) {
         if (backdrop) {
           backdrop.classList.toggle('show', show);
         }
       }
-
-      // Close menu when clicking on nav links (mobile)
       navCollapse.addEventListener('click', function(e) {
         if (e.target.closest('.nav-link') && window.innerWidth < 992) {
-          // Small delay for smooth animation
+          const link = e.target.closest('.nav-link');
+          e.preventDefault();
+          const href = link.getAttribute('href');
           setTimeout(() => {
             bsCollapse.hide();
             toggleBackdrop(false);
+            window.location.href = href;
           }, 150);
         }
       });
-
-      // Close menu when clicking backdrop
       if (backdrop) {
         backdrop.addEventListener('click', function() {
           bsCollapse.hide();
           toggleBackdrop(false);
         });
       }
-
-      // Handle collapse events
       navCollapse.addEventListener('show.bs.collapse', function() {
         toggleBackdrop(true);
         document.body.style.overflow = 'hidden';
       });
-
       navCollapse.addEventListener('hide.bs.collapse', function() {
         toggleBackdrop(false);
         document.body.style.overflow = '';
       });
-
-      // Close menu on escape key
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && navCollapse.classList.contains('show')) {
           bsCollapse.hide();
           toggleBackdrop(false);
         }
       });
-
-      // Auto-close on window resize (if mobile menu is open)
       window.addEventListener('resize', function() {
         if (window.innerWidth >= 992 && navCollapse.classList.contains('show')) {
           bsCollapse.hide();
           toggleBackdrop(false);
         }
       });
-
-      // Enhanced dropdown accessibility
       function initDropdowns() {
         const dropdowns = document.querySelectorAll('.dropdown');
         dropdowns.forEach(dropdown => {
           const toggle = dropdown.querySelector('.dropdown-toggle');
           const menu = dropdown.querySelector('.dropdown-menu');
-          
           if (toggle && menu) {
-            // Keyboard navigation
             toggle.addEventListener('keydown', function(e) {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                const bsDropdown = bootstrap.Dropdown.getInstance(toggle);
+                const bsDropdown = bootstrap.Dropdown.getInstance(toggle) || new bootstrap.Dropdown(toggle);
                 bsDropdown.toggle();
+              }
+            });
+            menu.addEventListener('click', function(e) {
+              if (e.target.closest('.dropdown-item') && window.innerWidth < 992) {
+                const bsDropdown = bootstrap.Dropdown.getInstance(toggle);
+                if (bsDropdown) bsDropdown.hide();
+                if (navCollapse.classList.contains('show')) {
+                  bsCollapse.hide();
+                  toggleBackdrop(false);
+                }
               }
             });
           }
         });
       }
-
       initDropdowns();
     });
   })();
 </script>
+</body>
+</html>
