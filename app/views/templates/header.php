@@ -40,10 +40,12 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       [data-theme="dark"] .navbar.navbar-modern{ background:linear-gradient(180deg, rgba(17,24,39,.7), rgba(15,23,42,.6)) !important; }
       .navbar .navbar-brand{ display:flex; align-items:center; gap:.6rem; font-weight:900; letter-spacing:-.02em; color:var(--text); }
       .navbar .brand-icon{ width:32px; height:32px; border-radius:10px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; box-shadow:0 2px 8px rgba(44,107,95,.25); }
-      .navbar .nav-link{ font-weight:700; color:var(--text-light); border-radius:12px; padding:.55rem .85rem; }
-      .navbar .nav-link i{ margin-right:.35rem; opacity:.9; }
-      .navbar .nav-link.active{ color:#fff; background:var(--primary); box-shadow:0 4px 12px rgba(44,107,95,.28); }
-      .navbar .nav-link:hover{ color:var(--text); background:var(--primary-light); }
+      .navbar .nav-link{ font-weight:800; color:var(--text-light); padding:.7rem 1.1rem; font-size:1rem; }
+      .navbar .nav-link i{ margin-right:.45rem; opacity:.9; }
+      .navbar .nav-link.active{ color:var(--primary); background:transparent; box-shadow:none; }
+      .navbar .nav-link:hover{ color:var(--primary); background:transparent; }
+      .navbar .navbar-collapse{ display:flex; align-items:center; }
+      .navbar .navbar-nav{ flex:1 1 auto; justify-content:center; gap:1.25rem; }
       .navbar .navbar-text{ color:var(--text); font-weight:700; }
       .theme-toggle{ border:1px solid var(--border); background:var(--card); color:var(--text); width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-right:.5rem; box-shadow:var(--shadow-sm); }
       .theme-toggle:hover{ background:var(--primary-light); }
