@@ -813,6 +813,44 @@ body {
         justify-content: center;
     }
 }
+
+/* Currency badge */
+.currency-badge {
+    display: inline-block;
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.4rem 0.6rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* Toasts */
+#toast-container {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.toast {
+  min-width: 220px;
+  max-width: 360px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  box-shadow: var(--shadow-md);
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+}
+.toast.error { border-left-color: var(--danger); }
+.toast.success { border-left-color: var(--success); }
+.field-error { color: var(--danger); font-size: 0.8rem; margin-top: 0.25rem; }
     </style>
 </head>
 <body>
@@ -942,6 +980,7 @@ body {
                         <!-- Currencies will be dynamically loaded here -->
                     </select>
                 </div>
+                <span id="currency-badge" class="currency-badge" title="Default currency"></span>
             </div>
         </header>
 
@@ -1257,6 +1296,9 @@ body {
         </div>
     </div>
 
+    <!-- Toasts -->
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
     <script>
         // Global data storage
         const financeData = {
@@ -1281,21 +1323,49 @@ body {
             if (!res.ok) throw new Error('API error: ' + res.status);
             return res.json();
         }
+        function showToast(message, type='success') {
+            try {
+                const box = document.createElement('div');
+                box.className = 'toast ' + (type||'');
+                box.textContent = message;
+                document.getElementById('toast-container').appendChild(box);
+                setTimeout(()=>{ box.remove(); }, 3500);
+            } catch(e) {}
+        }
+
         async function apiSend(method, path, body) {
-            const res = await fetch(path, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': CSRF_TOKEN
-                },
-                credentials: 'same-origin',
-                body: body ? JSON.stringify(body) : null
-            });
-            if (!res.ok) {
-                const t = await res.text();
-                throw new Error('API ' + method + ' ' + path + ' failed: ' + res.status + ' ' + t);
+            try {
+                const res = await fetch(path, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': CSRF_TOKEN
+                    },
+                    credentials: 'same-origin',
+                    body: body ? JSON.stringify(body) : null
+                });
+                if (!res.ok) {
+                    const t = await res.text();
+                    showToast('Error: ' + (t || (res.status + ' request failed')), 'error');
+                    throw new Error('API ' + method + ' ' + path + ' failed: ' + res.status + ' ' + t);
+                }
+                return res.status === 204 ? null : res.json();
+            } catch (e) {
+                showToast(e.message || 'Network error', 'error');
+                throw e;
             }
-            return res.status === 204 ? null : res.json();
+        }
+        function setFieldError(id, msg) {
+            const el = document.getElementById(id);
+            if (!el) return false;
+            let err = el.nextElementSibling;
+            if (!err || !err.classList || !err.classList.contains('field-error')) {
+                err = document.createElement('div');
+                err.className = 'field-error';
+                el.parentElement.appendChild(err);
+            }
+            err.textContent = msg || '';
+            return true;
         }
         const toCents = (n)=> Math.round((Number(n)||0)*100);
         const fromCents = (c)=> (Number(c)||0)/100;
@@ -1935,6 +2005,8 @@ body {
             const init = await apiGet('/finance/api/init');
             // Currency default from server
             if (init.defaultCurrency) financeData.currency = init.defaultCurrency;
+            const badge = document.getElementById('currency-badge');
+            if (badge) badge.textContent = (financeData.currency || '').toUpperCase();
 
             // Map savings goals (cents -> number)
             financeData.savingsGoals = (init.goals||[]).map(g=>({
@@ -2081,9 +2153,14 @@ body {
                 end_date: document.getElementById('budget-end').value || null,
                 currency: document.getElementById('budget-currency').value.trim().toUpperCase()
             };
-            if (id) await apiSend('PUT', `/finance/api/budgets/${encodeURIComponent(id)}`, payload);
-            else { await apiSend('POST', '/finance/api/budgets', payload); }
+            if (!payload.name) { setFieldError('budget-name','Name is required'); return; } else setFieldError('budget-name','');
+            if (!payload.date) { setFieldError('income-date','Date required'); return; } else setFieldError('income-date','');
+            if (fromCents(payload.amount_cents) <= 0) { setFieldError('income-amount','Amount must be > 0'); return; } else setFieldError('income-amount','');
+            if (!payload.source) { setFieldError('income-source','Source required'); return; } else setFieldError('income-source','');
+            if(id) await apiSend('PUT', `/finance/api/budgets/${encodeURIComponent(id)}`, payload);
+            else await apiSend('POST', '/finance/api/budgets', payload);
             await loadData(); updateUI();
+            showToast('Budget saved','success');
         }
 
         async function deleteBudget(id) {
@@ -2100,9 +2177,12 @@ body {
                 category_id: document.getElementById('line-category').value,
                 subcategory_id: document.getElementById('line-subcategory').value
             };
+            if (!payload.name) { setFieldError('line-name','Name is required'); return; } else setFieldError('line-name','');
+            if (fromCents(payload.planned_cents) < 0.01) { setFieldError('line-planned','Planned must be > 0'); return; } else setFieldError('line-planned','');
             if (lineId) await apiSend('PUT', `/finance/api/budget_lines/${encodeURIComponent(lineId)}`, payload);
             else await apiSend('POST', '/finance/api/budget_lines', payload);
             await loadData(); updateUI();
+            showToast('Budget line saved','success');
         }
 
         async function deleteBudgetLine(lineId) {
@@ -2207,14 +2287,14 @@ body {
                 active: active ? 1 : 0
             };
 
-            if (id) {
-                await apiSend('PUT', `/finance/api/accounts/${encodeURIComponent(id)}`, payload);
-            } else {
-                await apiSend('POST', '/finance/api/accounts', payload);
-            }
+            if (!name) { setFieldError('account-name','Name is required'); return; } else setFieldError('account-name','');
+            if (!currency) { setFieldError('account-currency','Currency is required'); return; } else setFieldError('account-currency','');
+            if (id) { await apiSend('PUT', `/finance/api/accounts/${encodeURIComponent(id)}`, payload); }
+            else { await apiSend('POST', '/finance/api/accounts', payload); }
 
             await loadData();
             updateUI();
+            showToast('Account saved','success');
         }
 
         async function deleteAccount(id) {
@@ -3024,14 +3104,14 @@ body {
                 currency: financeData.currency
             };
 
-            if (id) {
-                await apiSend('PUT', `/finance/api/savings_goals/${encodeURIComponent(id)}`, payload);
-            } else {
-                await apiSend('POST', '/finance/api/savings_goals', payload);
-            }
+            if (!name) { setFieldError('savings-goal','Name is required'); return; } else setFieldError('savings-goal','');
+            if (target <= 0) { setFieldError('savings-target','Target must be > 0'); return; } else setFieldError('savings-target','');
+            if (id) { await apiSend('PUT', `/finance/api/savings_goals/${encodeURIComponent(id)}`, payload); }
+            else { await apiSend('POST', '/finance/api/savings_goals', payload); }
 
             await loadData();
             updateUI();
+            showToast('Savings goal saved','success');
         }
 
         async function deleteSavingsGoal(id) {

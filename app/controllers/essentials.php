@@ -4,6 +4,25 @@ class essentials extends Controller {
   private function requireAuth() {
     if (!isset($_SESSION['auth'])) { header('Location: /login'); exit; }
   }
+
+  // GET /essentials/list — simple read-only list to verify data
+  public function list() {
+    $this->requireAuth();
+    $dbh = db_connect();
+    $tenantId = $this->tenantId();
+
+    $st = $dbh->prepare("SELECT e.*, c.name AS category_name, sc.name AS subcategory_name, pm.name AS payment_method_name
+                          FROM expenses e
+                          LEFT JOIN categories c ON c.id=e.category_id
+                          LEFT JOIN subcategories sc ON sc.id=e.subcategory_id
+                          LEFT JOIN payment_methods pm ON pm.id=e.payment_method_id
+                          WHERE e.tenant_id=? ORDER BY e.date DESC, e.id DESC LIMIT 200");
+    $st->execute([$tenantId]);
+    $rows = $st->fetchAll();
+
+    $title = 'Expenses (read-only)';
+    include 'app/views/essentials/list.php';
+  }
   private function tenantId(): int { return (int)($_SESSION['auth']['tenant_id'] ?? 1); }
   private function userId(): int   { return (int)($_SESSION['auth']['id'] ?? 0); }
 
