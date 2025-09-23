@@ -55,6 +55,44 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
+        /* Global loading overlay */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.05);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .loading-overlay.active { display: flex; }
+        .spinner {
+            width: 42px;
+            height: 42px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Button level spinner state */
+        .btn.loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            left: 50%; top: 50%;
+            width: 18px; height: 18px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: spin .8s linear infinite;
+        }
+
         body {
             font-family: var(--font-sans);
             background: linear-gradient(to bottom, var(--background), var(--background));
@@ -835,6 +873,10 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         @media (min-width: 640px) {
             .expense-form {
                 grid-template-columns: repeat(2, 1fr);
@@ -1371,8 +1413,17 @@
 
         // CSRF + API helpers
         const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
-        async function apiGet(path){ const r=await fetch(path,{credentials:'same-origin'}); if(!r.ok) throw new Error('GET '+path+' '+r.status); return r.json(); }
-        async function apiSend(method, path, body){ const r=await fetch(path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body: body?JSON.stringify(body):null}); if(!r.ok){ const t=await r.text(); throw new Error(method+' '+path+' '+r.status+' '+t);} return r.status===204?null:r.json(); }
+        const overlayEl = document.createElement('div');
+        overlayEl.id = 'global-spinner';
+        overlayEl.className = 'loading-overlay';
+        overlayEl.innerHTML = '<div class="spinner" aria-label="Loading"></div>';
+        document.addEventListener('DOMContentLoaded', () => { document.body.appendChild(overlayEl); });
+        let activeRequests = 0;
+        function beginLoad(){ activeRequests++; overlayEl.classList.add('active'); }
+        function endLoad(){ activeRequests = Math.max(0, activeRequests-1); if(activeRequests===0) overlayEl.classList.remove('active'); }
+
+        async function apiGet(path){ beginLoad(); try{ const r=await fetch(path,{credentials:'same-origin'}); if(!r.ok) throw new Error('GET '+path+' '+r.status); return await r.json(); } finally { endLoad(); } }
+        async function apiSend(method, path, body){ beginLoad(); try{ const r=await fetch(path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body: body?JSON.stringify(body):null}); if(!r.ok){ const t=await r.text(); throw new Error(method+' '+path+' '+r.status+' '+t);} return r.status===204?null:await r.json(); } finally { endLoad(); } }
 
         // Initialize the application
         async function initApp() {
@@ -2471,10 +2522,13 @@
             const name = document.getElementById('employer-name').value;
             const paySchedule = document.getElementById('pay-schedule').value;
             const baseRate = parseFloat(document.getElementById('base-rate').value);
+            const btn = document.querySelector('#modal .btn-primary'); if(btn){ btn.classList.add('loading'); btn.disabled = true; }
             const payload = { name, pay_schedule: paySchedule, base_rate: baseRate };
-            if (id) await apiSend('PUT', `/finance/api/employers/${encodeURIComponent(id)}`, payload);
-            else await apiSend('POST', '/finance/api/employers', payload);
-            await loadData(); updateUI();
+            try{
+                if (id) await apiSend('PUT', `/finance/api/employers/${encodeURIComponent(id)}`, payload);
+                else await apiSend('POST', '/finance/api/employers', payload);
+                await loadData(); updateUI();
+            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteEmployer(id) {
@@ -2488,10 +2542,13 @@
             const periodEnd = document.getElementById('payrun-period-end').value;
             const grossPay = parseFloat(document.getElementById('payrun-gross').value);
             const netPay = parseFloat(document.getElementById('payrun-net').value);
+            const btn = document.querySelector('#modal .btn-primary'); if(btn){ btn.classList.add('loading'); btn.disabled = true; }
             const payload = { employer_id: parseInt(employerId,10), period_start: periodStart, period_end: periodEnd, gross_cents: Math.round((grossPay||0)*100), net_cents: Math.round((netPay||0)*100) };
-            if (id) await apiSend('PUT', `/finance/api/payruns/${encodeURIComponent(id)}`, payload);
-            else await apiSend('POST', '/finance/api/payruns', payload);
-            await loadData(); updateUI();
+            try{
+                if (id) await apiSend('PUT', `/finance/api/payruns/${encodeURIComponent(id)}`, payload);
+                else await apiSend('POST', '/finance/api/payruns', payload);
+                await loadData(); updateUI();
+            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deletePayRun(id) {
@@ -2510,6 +2567,7 @@
             const tips = parseFloat(document.getElementById('shift-tips').value) || 0;
             const location = document.getElementById('shift-location').value || '';
             const notes = document.getElementById('shift-notes').value || '';
+            const btn = document.querySelector('#modal .btn-primary'); if(btn){ btn.classList.add('loading'); btn.disabled = true; }
 
             // Calculate hours based on start/end times and break
             if (startTime && endTime) {
@@ -2521,9 +2579,11 @@
             }
 
             const payload = { date, start_time: startTime, end_time: endTime, break_minutes: breakMinutes, employer_id: employerId?parseInt(employerId,10):null, role, rate, tips, location, notes };
-            if (id) await apiSend('PUT', `/finance/api/shifts/${encodeURIComponent(id)}`, payload);
-            else await apiSend('POST', '/finance/api/shifts', payload);
-            await loadData(); updateUI();
+            try{
+                if (id) await apiSend('PUT', `/finance/api/shifts/${encodeURIComponent(id)}`, payload);
+                else await apiSend('POST', '/finance/api/shifts', payload);
+                await loadData(); updateUI();
+            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteShift(id) {
@@ -2539,11 +2599,14 @@
             const apr = parseFloat(document.getElementById('debt-apr').value);
             const minPayment = parseFloat(document.getElementById('debt-min-payment').value);
             const dueDate = parseInt(document.getElementById('debt-due-date').value);
+            const btn = document.querySelector('#modal .btn-primary'); if(btn){ btn.classList.add('loading'); btn.disabled = true; }
             if (type === 'other') { const customType = document.getElementById('debt-custom-type').value.trim(); type = customType || 'other'; }
             const payload = { lender, type, balance, limit_amount: limit, apr, min_payment: minPayment, due_day: dueDate };
-            if (id) await apiSend('PUT', `/finance/api/debts/${encodeURIComponent(id)}`, payload);
-            else await apiSend('POST', '/finance/api/debts', payload);
-            await loadData(); updateUI();
+            try{
+                if (id) await apiSend('PUT', `/finance/api/debts/${encodeURIComponent(id)}`, payload);
+                else await apiSend('POST', '/finance/api/debts', payload);
+                await loadData(); updateUI();
+            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteDebt(id) {
@@ -2555,11 +2618,14 @@
             const name = document.getElementById('account-name').value;
             let type = document.getElementById('account-type').value;
             const value = parseFloat(document.getElementById('account-value').value);
+            const btn = document.querySelector('#modal .btn-primary'); if(btn){ btn.classList.add('loading'); btn.disabled = true; }
             if (type === 'other') { const customType = document.getElementById('account-custom-type').value.trim(); type = customType || 'other'; }
             const payload = { name, type, value };
-            if (id) await apiSend('PUT', `/finance/api/investment_accounts/${encodeURIComponent(id)}`, payload);
-            else await apiSend('POST', '/finance/api/investment_accounts', payload);
-            await loadData(); updateUI();
+            try{
+                if (id) await apiSend('PUT', `/finance/api/investment_accounts/${encodeURIComponent(id)}`, payload);
+                else await apiSend('POST', '/finance/api/investment_accounts', payload);
+                await loadData(); updateUI();
+            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteInvestmentAccount(id) {
@@ -2573,10 +2639,13 @@
             const symbol = document.getElementById('investment-symbol').value;
             const quantity = parseFloat(document.getElementById('investment-quantity').value);
             const price = parseFloat(document.getElementById('investment-price').value);
+            const btn = document.querySelector('#modal .btn-primary'); if(btn){ btn.classList.add('loading'); btn.disabled = true; }
             const payload = { account_id: parseInt(accountId,10), name, symbol, quantity, price };
-            if (id) await apiSend('PUT', `/finance/api/investments/${encodeURIComponent(id)}`, payload);
-            else await apiSend('POST', '/finance/api/investments', payload);
-            await loadData(); updateUI();
+            try{
+                if (id) await apiSend('PUT', `/finance/api/investments/${encodeURIComponent(id)}`, payload);
+                else await apiSend('POST', '/finance/api/investments', payload);
+                await loadData(); updateUI();
+            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteInvestment(id) {
@@ -2589,10 +2658,13 @@
             const target = parseFloat(document.getElementById('savings-target').value);
             const saved = parseFloat(document.getElementById('savings-saved').value);
             const deadline = document.getElementById('savings-deadline').value;
+            const btn = document.querySelector('#modal .btn-primary'); if(btn){ btn.classList.add('loading'); btn.disabled = true; }
             const payload = { name, target_cents: Math.round((target||0)*100), saved_cents: Math.round((saved||0)*100), deadline: deadline||null, currency: financeData.currency };
-            if (id) await apiSend('PUT', `/finance/api/savings_goals/${encodeURIComponent(id)}`, payload);
-            else await apiSend('POST', '/finance/api/savings_goals', payload);
-            await loadData(); updateUI();
+            try{
+                if (id) await apiSend('PUT', `/finance/api/savings_goals/${encodeURIComponent(id)}`, payload);
+                else await apiSend('POST', '/finance/api/savings_goals', payload);
+                await loadData(); updateUI();
+            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteSavingsGoal(id) {
