@@ -24,5 +24,5 @@ define('DB_USER',     $_ENV['DB_USER']     ?? '2kE5MtL1evUmi3g.root');
 define('DB_PASS',     $_ENV['DB_PASS']     ?? '');
 
 // Optional SSL settings (recommended for TiDB Cloud public endpoint)
-// Set DB_SSL_CA to a CA bundle path if needed (e.g., /etc/ssl/cert.pem)
-define('DB_SSL_CA',   $_ENV['DB_SSL_CA']   ?? '');
+// Default to system bundle used by Replit containers; override via env if needed.
+define('DB_SSL_CA',   $_ENV['DB_SSL_CA']   ?? '/etc/ssl/cert.pem');
