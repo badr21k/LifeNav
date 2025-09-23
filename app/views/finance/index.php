@@ -1514,10 +1514,11 @@
             themeToggle.addEventListener('click', toggleTheme);
             
             // Currency selector
-            baseCurrencySelector.addEventListener('change', (e) => {
+            baseCurrencySelector.addEventListener('change', async (e) => {
                 financeData.currency = e.target.value;
                 updateUI();
                 saveData();
+                try { await apiSend('PUT','/finance/api/settings',{ default_currency: financeData.currency }); } catch(_e){}
             });
             
             // Tab switching
@@ -1536,20 +1537,25 @@
         }
 
         // Load available currencies
-        function loadCurrencies() {
-            const currencies = [
-                'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR', 'BRL'
-            ];
-            
-            baseCurrencySelector.innerHTML = '';
-            currencies.forEach(currency => {
-                const option = document.createElement('option');
-                option.value = currency;
-                option.textContent = currency;
-                baseCurrencySelector.appendChild(option);
-            });
-            
-            baseCurrencySelector.value = financeData.currency;
+        async function loadCurrencies() {
+            try {
+                const list = await apiGet('/finance/api/currencies');
+                baseCurrencySelector.innerHTML = '';
+                list.forEach(c => {
+                    const option = document.createElement('option');
+                    option.value = c.code;
+                    option.textContent = `${c.code} — ${c.name}`;
+                    baseCurrencySelector.appendChild(option);
+                });
+                // Load server default currency if available
+                try {
+                    const s = await apiGet('/finance/api/settings');
+                    if (s && s.default_currency) financeData.currency = s.default_currency;
+                } catch(_){}
+                baseCurrencySelector.value = financeData.currency;
+            } catch (e) {
+                console.warn('Failed to load currencies', e);
+            }
         }
 
         // Theme management

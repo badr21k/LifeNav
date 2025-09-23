@@ -1021,12 +1021,19 @@ function App() {
     // Cross-tab/channel sync with Finance
     const financeChannelRef = useRef(null);
 
-    // Load current month paycheck from Finance summary
+    // Load currency settings and current month paycheck from Finance summary
     useEffect(() => {
         const ym = new Date().toISOString().slice(0,7);
         let mounted = true;
         (async () => {
             try {
+                // default currency from server settings
+                try {
+                    const s = await apiGet('/finance/api/settings');
+                    if (s && s.default_currency) {
+                        if (!mounted) return; setState(prev=>({ ...prev, baseCurrency: s.default_currency }));
+                    }
+                } catch(_e){}
                 const s = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`);
                 if (!mounted) return;
                 setState(prev => ({ ...prev, paycheck: (s?.income_cents||0)/100 }));
@@ -1056,8 +1063,8 @@ function App() {
             (init.subcategories||[]).forEach(s=>{
                 const cat = (init.categories||[]).find(c=>c.id===s.category_id);
                 const cname = cat ? cat.name : 'Unknown';
-                if(!subByCatName[cname]) subByCatName[cname] = {};
-                subByCatName[cname][s.name] = s.id;
+                if (!subByCatName[cname]) subByCatName[cname]=[];
+                subByCatName[cname].push({ id:s.id, name:s.name });
             });
             const pmByName = {}; (init.payment_methods||[]).forEach(p=> pmByName[p.name]=p.id);
 

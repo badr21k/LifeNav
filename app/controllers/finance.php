@@ -6,6 +6,30 @@ class Finance extends Controller {
         if (!isset($_SESSION['auth'])) { header('Location: /login'); exit; }
     }
 
+    private function settings(PDO $dbh, int $tenantId, string $method) {
+        if ($method === 'GET') {
+            $out = ['default_currency' => null];
+            if ($this->tableExists($dbh,'tenant_settings')) {
+                $st=$dbh->prepare('SELECT default_currency FROM tenant_settings WHERE tenant_id=?');
+                $st->execute([$tenantId]);
+                $row=$st->fetch(); if($row){ $out['default_currency']=$row['default_currency']; }
+            }
+            return $this->json($out);
+        }
+        if ($method === 'PUT' || $method === 'PATCH') {
+            $b = $this->bodyJson();
+            $dc = strtoupper(mb_substr(trim($b['default_currency'] ?? ''),0,8));
+            if ($dc==='') return $this->json(['error'=>'default_currency required'],422);
+            // ensure table exists (idempotent)
+            $dbh->exec('CREATE TABLE IF NOT EXISTS tenant_settings (tenant_id INT PRIMARY KEY, default_currency VARCHAR(8) NULL, updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)');
+            // upsert
+            $st = $dbh->prepare('INSERT INTO tenant_settings (tenant_id, default_currency) VALUES (?,?) ON DUPLICATE KEY UPDATE default_currency=VALUES(default_currency)');
+            $st->execute([$tenantId,$dc]);
+            return $this->json(['ok'=>true]);
+        }
+        return $this->json(['error'=>'Method not allowed'],405);
+    }
+
     private function tableExists(PDO $dbh, string $table): bool {
         try {
             $st = $dbh->query("SHOW TABLES LIKE " . $dbh->quote($table));
@@ -247,6 +271,29 @@ class Finance extends Controller {
                 $resp = $this->monthlySummary($dbh, $tenantId, $month);
                 return $this->json($resp);
 
+            case 'settings':
+                return $this->settings($dbh, $tenantId, $method);
+
+            case 'currencies':
+                if ($method !== 'GET') return $this->json(['error'=>'Method not allowed'],405);
+                $path = __DIR__ . '/../data/currencies.json';
+                $list = [];
+                if (is_file($path)) {
+                    $json = @file_get_contents($path);
+                    $arr = json_decode($json, true);
+                    if (is_array($arr)) $list = $arr;
+                }
+                if (!$list) {
+                    $list = [
+                        ['code'=>'USD','name'=>'US Dollar','symbol'=>'$'],
+                        ['code'=>'EUR','name'=>'Euro','symbol'=>'€'],
+                        ['code'=>'GBP','name'=>'British Pound','symbol'=>'£'],
+                        ['code'=>'JPY','name'=>'Japanese Yen','symbol'=>'¥'],
+                        ['code'=>'CAD','name'=>'Canadian Dollar','symbol'=>'C$'],
+                    ];
+                }
+                return $this->json($list);
+
             case 'accounts':
                 return $this->accounts($dbh, $tenantId, $method, $id);
 
@@ -380,8 +427,15 @@ class Finance extends Controller {
         $st->execute([$tenantId]);
         $investments=$st->fetchAll();
 
-        // default currency: pick first account currency or CAD
-        $defaultCurrency = $accounts[0]['currency'] ?? 'CAD';
+        // default currency: prefer tenant_settings.default_currency, else first account currency, else CAD
+        $defaultCurrency = 'CAD';
+        if ($this->tableExists($dbh,'tenant_settings')) {
+            $st=$dbh->prepare('SELECT default_currency FROM tenant_settings WHERE tenant_id=?');
+            $st->execute([$tenantId]);
+            $row=$st->fetch();
+            if ($row && !empty($row['default_currency'])) { $defaultCurrency = $row['default_currency']; }
+        }
+        if (!$defaultCurrency) { $defaultCurrency = $accounts[0]['currency'] ?? 'CAD'; }
 
         return compact('categories','subcategories','payment_methods','accounts','goals','budgets','income','transfers','employers','payruns','shifts','debts','investment_accounts','investments','defaultCurrency');
     }
