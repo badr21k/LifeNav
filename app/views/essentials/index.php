@@ -1227,6 +1227,27 @@ function App() {
         catch (e) { console.error(e); }
     };
 
+    // Modal controls (missing earlier)
+    const openModal = (type, id = null, fromRecurring = false) => {
+        setState(prev => ({
+            ...prev,
+            modal: type,
+            editingId: id,
+            fromRecurringList: !!fromRecurring,
+            error: null,
+        }));
+    };
+
+    const closeModal = () => {
+        setState(prev => ({
+            ...prev,
+            modal: null,
+            editingId: null,
+            fromRecurringList: false,
+            error: null,
+        }));
+    };
+
     // Render charts
     useEffect(() => {
         if (!state.showCharts || state.expenses.length === 0) return;
