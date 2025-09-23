@@ -1068,7 +1068,9 @@
                     <i class="fas fa-moon"></i>
                 </button>
                 <div class="currency-selector-wrapper">
-                    <select id="base-currency-selector" class="currency-selector">
+                    <input id="currency-search" class="currency-typeahead" list="currency-list" placeholder="Search currency..." aria-label="Search currency" />
+                    <datalist id="currency-list"></datalist>
+                    <select id="base-currency-selector" class="currency-selector" aria-label="Base currency">
                         <option value="USD">USD</option>
                         <option value="EUR">EUR</option>
                         <option value="GBP">GBP</option>
@@ -1467,6 +1469,8 @@
         // DOM Elements
         const themeToggle = document.getElementById('theme-toggle');
         const baseCurrencySelector = document.getElementById('base-currency-selector');
+        const currencySearch = document.getElementById('currency-search');
+        const currencyList = document.getElementById('currency-list');
         const modal = document.getElementById('modal');
         const paymentModal = document.getElementById('payment-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -1521,6 +1525,21 @@
                 try { await apiSend('PUT','/finance/api/settings',{ default_currency: financeData.currency }); } catch(_e){}
             });
             
+            // Currency typeahead: when user selects from datalist, sync the select and persist
+            currencySearch.addEventListener('change', async (e) => {
+                const val = e.target.value || '';
+                // Expect formats like "USD — US Dollar"; extract leading 3-letter code
+                const match = val.match(/^([A-Z]{3})\b/);
+                const code = match ? match[1] : '';
+                if (code) {
+                    baseCurrencySelector.value = code;
+                    financeData.currency = code;
+                    updateUI();
+                    saveData();
+                    try { await apiSend('PUT','/finance/api/settings',{ default_currency: financeData.currency }); } catch(_e){}
+                }
+            });
+            
             // Tab switching
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
@@ -1541,11 +1560,16 @@
             try {
                 const list = await apiGet('/finance/api/currencies');
                 baseCurrencySelector.innerHTML = '';
+                currencyList.innerHTML = '';
                 list.forEach(c => {
                     const option = document.createElement('option');
                     option.value = c.code;
                     option.textContent = `${c.code} — ${c.name}`;
                     baseCurrencySelector.appendChild(option);
+                    const d = document.createElement('option');
+                    d.value = `${c.code} — ${c.name}`;
+                    d.label = c.symbol ? `${c.symbol}` : c.code;
+                    currencyList.appendChild(d);
                 });
                 // Load server default currency if available
                 try {

@@ -276,10 +276,17 @@ class Finance extends Controller {
 
             case 'currencies':
                 if ($method !== 'GET') return $this->json(['error'=>'Method not allowed'],405);
-                $path = __DIR__ . '/../data/currencies.json';
                 $list = [];
-                if (is_file($path)) {
-                    $json = @file_get_contents($path);
+                // Prefer extra file if present (intended to contain the full ISO-4217 list)
+                $extra = __DIR__ . '/../data/currencies_extra.json';
+                $base  = __DIR__ . '/../data/currencies.json';
+                if (is_file($extra)) {
+                    $json = @file_get_contents($extra);
+                    $arr = json_decode($json, true);
+                    if (is_array($arr)) $list = $arr;
+                }
+                if (!$list && is_file($base)) {
+                    $json = @file_get_contents($base);
                     $arr = json_decode($json, true);
                     if (is_array($arr)) $list = $arr;
                 }
