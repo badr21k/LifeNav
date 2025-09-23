@@ -79,6 +79,10 @@ class essentials extends Controller {
             case 'PATCH':
               if(!$id) return $this->json(['error'=>'ID required'],400);
               $id=(int)$id; $b=$this->bodyJson();
+              // ensure column exists so updates don't silently fail on older schemas
+              if (!$this->hasColumn($dbh,'expenses','count_weekly')) {
+                try { $dbh->exec("ALTER TABLE expenses ADD COLUMN count_weekly TINYINT(1) NOT NULL DEFAULT 1 AFTER note"); } catch (Throwable $e) { /* ignore */ }
+              }
               $fields=[]; $vals=[];
               foreach(['date','currency','merchant','note'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
               if(isset($b['amount_cents'])){ $fields[]='amount_cents=?'; $vals[]=(int)$b['amount_cents']; }
