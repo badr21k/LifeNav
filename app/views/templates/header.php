@@ -66,6 +66,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         font-family: var(--font-sans);
         padding-top: var(--header-h);
         line-height: 1.6;
+        overflow-x: hidden;
       }
       .navbar-modern {
         position: fixed;
@@ -124,6 +125,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        position: relative;
       }
       .nav-link i {
         font-size: 1.1rem;
@@ -290,6 +292,25 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           justify-content: center;
           gap: 1.25rem;
         }
+      }
+
+      /* Focus-visible rings for accessibility */
+      .nav-link:focus-visible,
+      .user-chip:focus-visible,
+      .dropdown-item:focus-visible,
+      .navbar-toggler:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+
+      /* Scroll-aware glass effect */
+      .navbar-modern.scrolled {
+        box-shadow: var(--shadow-md);
+      }
+
+      /* Reduced motion support */
+      @media (prefers-reduced-motion: reduce) {
+        * { transition: none !important; animation: none !important; }
       }
     </style>
 </head>
