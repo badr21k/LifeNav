@@ -878,6 +878,23 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
+        // CSRF token for API calls
+        const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
+        async function apiGet(path) {
+            const res = await fetch(path, { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('API GET ' + path + ' failed: ' + res.status);
+            return res.json();
+        }
+        async function apiSend(method, path, body) {
+            const res = await fetch(path, {
+                method,
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+                credentials: 'same-origin',
+                body: body ? JSON.stringify(body) : null
+            });
+            if (!res.ok) { const t = await res.text(); throw new Error(method+' '+path+' failed: '+res.status+' '+t); }
+            return res.status===204 ? null : res.json();
+        }
 
 
 // Currency list
@@ -964,6 +981,8 @@ function App() {
     const [state, setState] = useState({
         mode: 'normal',
         expenses: [],
+        dataSource: 'Local',
+        maps: { catByName: {}, subByCatName: {}, pmByName: {} },
         categories: {
             normal: [
                 { name: 'Transportation', subcategories: ['Car Insurance', 'Fuel', 'Parking', 'Public Transit', 'Other'] },
@@ -998,6 +1017,39 @@ function App() {
 
     const chartRef = useRef(null);
     const categoryChartRefs = useRef({});
+
+    // Fetch backend init and expenses
+    const loadEssentials = async () => {
+        try {
+            const init = await apiGet('/essentials/api/init');
+            const catByName = {};
+            (init.categories||[]).forEach(c=>{ catByName[c.name]=c.id; });
+            const subByCatName = {};
+            (init.subcategories||[]).forEach(s=>{
+                const cat = (init.categories||[]).find(c=>c.id===s.category_id);
+                const cname = cat ? cat.name : 'Unknown';
+                if(!subByCatName[cname]) subByCatName[cname] = {};
+                subByCatName[cname][s.name] = s.id;
+            });
+            const pmByName = {}; (init.payment_methods||[]).forEach(p=> pmByName[p.name]=p.id);
+
+            const list = await apiGet('/essentials/api/expenses');
+            const rows = (list||[]).map(r=>({
+                id: String(r.id),
+                mode: 'normal',
+                category: r.category_name || 'Unknown',
+                subcategory: r.subcategory_name || 'Other',
+                amount: (Number(r.amount_cents)||0)/100,
+                currency: r.currency || 'CAD',
+                symbol: currencies.find(c=>c.code===(r.currency||'CAD'))?.symbol || 'C$',
+                date: r.date,
+                description: r.note || r.merchant || '',
+                countWeekly: true,
+                recurring: false
+            }));
+            setState(prev=>({ ...prev, expenses: rows, dataSource: 'Database', maps: { catByName, subByCatName, pmByName } }));
+        } catch (e) { console.error(e); }
+    };
 
     // Fetch exchange rates
     const getExchangeRates = async () => {
@@ -1107,8 +1159,8 @@ function App() {
         }));
     };
 
-    // Save expense
-    const saveExpense = () => {
+    // Save expense (DB)
+    const saveExpense = async () => {
         const amountInput = document.getElementById('amount');
         const dateInput = document.getElementById('date');
         const recurringInput = document.getElementById('recurring');
@@ -1125,34 +1177,21 @@ function App() {
             return;
         }
 
-        const expense = {
-            id: state.editingId || Date.now(),
-            mode: state.mode,
-            category: document.getElementById('modal-category')?.value,
-            subcategory: document.getElementById('modal-subcategory')?.value,
-            amount,
-            currency: document.getElementById('currency')?.value,
-            symbol: currencies.find(c => c.code === document.getElementById('currency')?.value)?.symbol,
-            date: dateInput.value,
-            description: document.getElementById('description')?.value || document.getElementById('modal-subcategory')?.value,
-            countWeekly: document.getElementById('count-weekly')?.checked,
-            recurring: recurringInput?.checked ? {
-                start: recurringStartInput.value,
-                end: document.getElementById('recurring-forever')?.checked ? null : document.getElementById('recurring-end')?.value || null,
-                forever: document.getElementById('recurring-forever')?.checked,
-            } : false,
-        };
+        const category = document.getElementById('modal-category')?.value;
+        const subcategory = document.getElementById('modal-subcategory')?.value || null;
+        const currency = document.getElementById('currency')?.value || 'CAD';
+        const note = document.getElementById('description')?.value || subcategory || '';
+        const catId = state.maps.catByName[category] || null;
+        const subId = subcategory ? ((state.maps.subByCatName[category]||{})[subcategory] || null) : null;
+        if (!catId) { setState(prev=>({ ...prev, error: 'Unknown category' })); return; }
 
-        setState(prev => ({
-            ...prev,
-            expenses: prev.editingId
-                ? prev.expenses.map(exp => (exp.id === prev.editingId ? expense : exp))
-                : [...prev.expenses, expense],
-            modal: null,
-            editingId: null,
-            fromRecurringList: false,
-            error: null,
-        }));
+        const payload = { date: dateInput.value, amount_cents: Math.round(amount*100), currency, category_id: catId, subcategory_id: subId, payment_method_id: null, merchant: '', note };
+        try {
+            if (state.editingId) await apiSend('PUT', `/essentials/api/expenses/${encodeURIComponent(state.editingId)}`, payload);
+            else await apiSend('POST', '/essentials/api/expenses', payload);
+            await loadEssentials();
+            setState(prev=>({ ...prev, modal: null, editingId: null, fromRecurringList: false, error: null }));
+        } catch (e) { setState(prev=>({ ...prev, error: e.message })); }
     };
 
     // Edit expense
@@ -1160,12 +1199,10 @@ function App() {
         openModal('add-expense', id, state.fromRecurringList);
     };
 
-    // Delete expense
-    const deleteExpense = (id) => {
-        setState(prev => ({
-            ...prev,
-            expenses: prev.expenses.filter(exp => exp.id !== id),
-        }));
+    // Delete expense (DB)
+    const deleteExpense = async (id) => {
+        try { await apiSend('DELETE', `/essentials/api/expenses/${encodeURIComponent(id)}`); await loadEssentials(); }
+        catch (e) { console.error(e); }
     };
 
     // Render charts
@@ -1255,6 +1292,7 @@ function App() {
     // Initialize app
     useEffect(() => {
         getExchangeRates();
+        loadEssentials();
         return () => {
             Object.values(state.charts).forEach(chart => chart?.destroy());
         };
@@ -1546,6 +1584,10 @@ function App() {
                 <div className="mode-indicator fade-in">
                     <i className={`fas ${state.mode === 'normal' ? 'fa-home' : 'fa-plane'}`}></i>
                     <span>{state.mode.charAt(0).toUpperCase() + state.mode.slice(1)} Mode</span>
+                </div>
+                <div className="mode-indicator" style={{marginTop:'0.5rem'}}>
+                    <i className="fas fa-database"></i>
+                    <span>Data source: {state.dataSource}</span>
                 </div>
 
                 {state.showCharts && (

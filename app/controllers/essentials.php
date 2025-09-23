@@ -5,6 +5,91 @@ class essentials extends Controller {
     if (!isset($_SESSION['auth'])) { header('Location: /login'); exit; }
   }
 
+  private function tenantId(): int { return (int)($_SESSION['auth']['tenant_id'] ?? 1); }
+  private function userId(): int   { return (int)($_SESSION['auth']['id'] ?? 0); }
+  private function json($data, int $code=200): void { http_response_code($code); header('Content-Type: application/json'); echo json_encode($data); exit; }
+  private function bodyJson(): array { $raw=file_get_contents('php://input'); $j=json_decode($raw,true); return is_array($j)?$j:[]; }
+
+  // /essentials/api/{resource}/{id?}
+  public function api($resource=null, $id=null) {
+    $this->requireAuth();
+    try {
+      if (function_exists('csrf_verify_header')) csrf_verify_header('X-CSRF-Token');
+      $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+      $tenantId = $this->tenantId();
+      $dbh = db_connect();
+      switch ($resource) {
+        case 'ping':
+          return $this->json(['ok'=>true,'tenant_id'=>$tenantId]);
+        case 'init':
+          if ($method !== 'GET') return $this->json(['error'=>'Method not allowed'],405);
+          // categories
+          if ($this->hasColumn($dbh,'categories','tenant_id')) {
+            $st=$dbh->prepare('SELECT id,name FROM categories WHERE active=1 AND (tenant_id IS NULL OR tenant_id=?) ORDER BY id');
+            $st->execute([$tenantId]);
+            $categories=$st->fetchAll();
+          } else { $categories=$dbh->query('SELECT id,name FROM categories WHERE active=1 ORDER BY id')->fetchAll(); }
+          // subcategories
+          if ($this->hasColumn($dbh,'subcategories','tenant_id')) {
+            $st=$dbh->prepare('SELECT id,category_id,name FROM subcategories WHERE active=1 AND (tenant_id IS NULL OR tenant_id=?) ORDER BY category_id, name');
+            $st->execute([$tenantId]);
+            $subcategories=$st->fetchAll();
+          } else { $subcategories=$dbh->query('SELECT id,category_id,name FROM subcategories WHERE active=1 ORDER BY category_id, name')->fetchAll(); }
+          // payment methods
+          if ($this->hasColumn($dbh,'payment_methods','tenant_id')) {
+            $st=$dbh->prepare('SELECT id,name FROM payment_methods WHERE active=1 AND (tenant_id IS NULL OR tenant_id=?) ORDER BY id');
+            $st->execute([$tenantId]);
+            $payment_methods=$st->fetchAll();
+          } else { $payment_methods=$dbh->query('SELECT id,name FROM payment_methods WHERE active=1 ORDER BY id')->fetchAll(); }
+          return $this->json(compact('categories','subcategories','payment_methods'));
+        case 'expenses':
+          switch ($method) {
+            case 'GET':
+              if ($id) {
+                $st=$dbh->prepare('SELECT e.*, c.name AS category_name, sc.name AS subcategory_name FROM expenses e LEFT JOIN categories c ON c.id=e.category_id LEFT JOIN subcategories sc ON sc.id=e.subcategory_id WHERE e.tenant_id=? AND e.id=?');
+                $st->execute([$tenantId,(int)$id]); $row=$st->fetch(); return $this->json($row?:['error'=>'Not found'],$row?200:404);
+              }
+              $st=$dbh->prepare('SELECT e.*, c.name AS category_name, sc.name AS subcategory_name FROM expenses e LEFT JOIN categories c ON c.id=e.category_id LEFT JOIN subcategories sc ON sc.id=e.subcategory_id WHERE e.tenant_id=? ORDER BY e.date DESC, e.id DESC LIMIT 500');
+              $st->execute([$tenantId]); return $this->json($st->fetchAll());
+            case 'POST':
+              $b=$this->bodyJson();
+              $date = trim($b['date'] ?? ''); if(!preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)) return $this->json(['error'=>'Invalid date'],422);
+              $amount=(int)($b['amount_cents'] ?? 0); if($amount<=0) return $this->json(['error'=>'Invalid amount'],422);
+              $currency=strtoupper(mb_substr(trim($b['currency'] ?? 'CAD'),0,8));
+              $cat=(int)($b['category_id'] ?? 0); if($cat<=0) return $this->json(['error'=>'Category required'],422);
+              $sub = isset($b['subcategory_id']) && $b['subcategory_id']!=='' ? (int)$b['subcategory_id'] : null;
+              $pm  = isset($b['payment_method_id']) && $b['payment_method_id']!=='' ? (int)$b['payment_method_id'] : null;
+              $merchant=mb_substr(trim($b['merchant'] ?? ''),0,64);
+              $note=mb_substr(trim($b['note'] ?? ''),0,255);
+              $userId=$this->userId();
+              $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+              $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note]);
+              return $this->json(['id'=>(int)$dbh->lastInsertId()],201);
+            case 'PUT':
+            case 'PATCH':
+              if(!$id) return $this->json(['error'=>'ID required'],400);
+              $id=(int)$id; $b=$this->bodyJson();
+              $fields=[]; $vals=[];
+              foreach(['date','currency','merchant','note'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
+              if(isset($b['amount_cents'])){ $fields[]='amount_cents=?'; $vals[]=(int)$b['amount_cents']; }
+              if(isset($b['category_id'])){ $fields[]='category_id=?'; $vals[]=(int)$b['category_id']; }
+              if(array_key_exists('subcategory_id',$b)){ $fields[]='subcategory_id=?'; $vals[]=($b['subcategory_id']!==''?(int)$b['subcategory_id']:null); }
+              if(array_key_exists('payment_method_id',$b)){ $fields[]='payment_method_id=?'; $vals[]=($b['payment_method_id']!==''?(int)$b['payment_method_id']:null); }
+              if(!$fields) return $this->json(['error'=>'No fields'],400);
+              $sql='UPDATE expenses SET '.implode(',', $fields).', updated_at=NOW() WHERE tenant_id=? AND id=?';
+              $vals[]=$tenantId; $vals[]=$id; $st=$dbh->prepare($sql); $st->execute($vals);
+              return $this->json(['ok'=>true]);
+            case 'DELETE':
+              if(!$id) return $this->json(['error'=>'ID required'],400);
+              $st=$dbh->prepare('DELETE FROM expenses WHERE tenant_id=? AND id=?'); $st->execute([$tenantId,(int)$id]);
+              return $this->json(['ok'=>true]);
+          }
+          return $this->json(['error'=>'Method not allowed'],405);
+      }
+      return $this->json(['error'=>'Not found'],404);
+    } catch (Throwable $e) { return $this->json(['error'=>'Server error','message'=>$e->getMessage()],500); }
+  }
+
   // GET /essentials/list — simple read-only list to verify data
   public function list() {
     $this->requireAuth();
@@ -23,8 +108,7 @@ class essentials extends Controller {
     $title = 'Expenses (read-only)';
     include 'app/views/essentials/list.php';
   }
-  private function tenantId(): int { return (int)($_SESSION['auth']['tenant_id'] ?? 1); }
-  private function userId(): int   { return (int)($_SESSION['auth']['id'] ?? 0); }
+  // moved helpers above
 
   // Check if a table has a specific column (backward compatible with pre-tenant schemas)
   private function hasColumn(PDO $dbh, string $table, string $column): bool {
