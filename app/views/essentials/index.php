@@ -52,23 +52,23 @@
         }
 
         .container {
-            max-width: 1280px;
+            max-width: 1440px;
             margin: 0 auto;
             width: 100%;
             flex: 1;
+            padding: 0 1rem;
         }
 
         .header {
             display: flex;
-            flex-direction: column;
-            gap: 1rem;
             align-items: center;
-            margin-bottom: 1.5rem;
-            padding: 1.5rem;
+            justify-content: center;
+            padding: 1rem;
+            margin: 0 0 1rem 0;
+            border: 1px solid var(--border);
             border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-md);
-            border: none;
-            background: linear-gradient(145deg, var(--card), var(--background));
+            background: var(--card);
+            box-shadow: var(--shadow-sm);
         }
 
         .logo {
@@ -101,9 +101,10 @@
         .controls {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.5rem;
+            gap: 0.75rem;
             justify-content: center;
             align-items: center;
+            width: 100%;
         }
 
         .theme-toggle {
@@ -282,12 +283,13 @@
             gap: 0.75rem;
             overflow-x: auto;
             padding: 0.5rem 0.25rem;
-            background: transparent;
+            background: var(--card);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
             scroll-snap-type: x mandatory;
             -webkit-overflow-scrolling: touch;
+            box-shadow: var(--shadow-sm);
         }
 
         .tabs::-webkit-scrollbar {
@@ -332,11 +334,18 @@
         .expense-table th {
             text-align: left;
             padding: 1rem;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--text-light);
             font-size: 0.875rem;
-            border-bottom: 2px solid var(--border);
+            border-bottom: 1px solid var(--border);
             background-color: var(--card);
+        }
+
+        .expense-table td {
+            padding: 1rem;
+            background-color: var(--card);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
         }
 
         .expense-table td {
