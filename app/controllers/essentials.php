@@ -53,6 +53,10 @@ class essentials extends Controller {
               $st->execute([$tenantId]); return $this->json($st->fetchAll());
             case 'POST':
               $b=$this->bodyJson();
+              // ensure count_weekly column exists (idempotent)
+              if (!$this->hasColumn($dbh,'expenses','count_weekly')) {
+                try { $dbh->exec("ALTER TABLE expenses ADD COLUMN count_weekly TINYINT(1) NOT NULL DEFAULT 1 AFTER note"); } catch (Throwable $e) { /* ignore */ }
+              }
               $date = trim($b['date'] ?? ''); if(!preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)) return $this->json(['error'=>'Invalid date'],422);
               $amount=(int)($b['amount_cents'] ?? 0); if($amount<=0) return $this->json(['error'=>'Invalid amount'],422);
               $currency=strtoupper(mb_substr(trim($b['currency'] ?? 'CAD'),0,8));
@@ -61,9 +65,15 @@ class essentials extends Controller {
               $pm  = isset($b['payment_method_id']) && $b['payment_method_id']!=='' ? (int)$b['payment_method_id'] : null;
               $merchant=mb_substr(trim($b['merchant'] ?? ''),0,64);
               $note=mb_substr(trim($b['note'] ?? ''),0,255);
+              $countWeekly = isset($b['count_weekly']) ? (int)!!$b['count_weekly'] : 1;
               $userId=$this->userId();
-              $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
-              $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note]);
+              if ($this->hasColumn($dbh,'expenses','count_weekly')) {
+                $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+                $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly]);
+              } else {
+                $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+                $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note]);
+              }
               return $this->json(['id'=>(int)$dbh->lastInsertId()],201);
             case 'PUT':
             case 'PATCH':
@@ -75,6 +85,7 @@ class essentials extends Controller {
               if(isset($b['category_id'])){ $fields[]='category_id=?'; $vals[]=(int)$b['category_id']; }
               if(array_key_exists('subcategory_id',$b)){ $fields[]='subcategory_id=?'; $vals[]=($b['subcategory_id']!==''?(int)$b['subcategory_id']:null); }
               if(array_key_exists('payment_method_id',$b)){ $fields[]='payment_method_id=?'; $vals[]=($b['payment_method_id']!==''?(int)$b['payment_method_id']:null); }
+              if ($this->hasColumn($dbh,'expenses','count_weekly') && array_key_exists('count_weekly',$b)) { $fields[]='count_weekly=?'; $vals[]=(int)!!$b['count_weekly']; }
               if(!$fields) return $this->json(['error'=>'No fields'],400);
               $sql='UPDATE expenses SET '.implode(',', $fields).', updated_at=NOW() WHERE tenant_id=? AND id=?';
               $vals[]=$tenantId; $vals[]=$id; $st=$dbh->prepare($sql); $st->execute($vals);

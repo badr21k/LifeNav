@@ -7,24 +7,49 @@ class Finance extends Controller {
     }
 
     private function settings(PDO $dbh, int $tenantId, string $method) {
+        // Ensure table and columns exist
+        $dbh->exec('CREATE TABLE IF NOT EXISTS tenant_settings (
+            tenant_id INT PRIMARY KEY,
+            default_currency VARCHAR(8) NULL,
+            weekly_budget_normal_cents INT NULL,
+            weekly_budget_travel_cents INT NULL,
+            updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )');
+        // Backward-compatible alter in case table exists without new columns
+        try { $dbh->exec('ALTER TABLE tenant_settings ADD COLUMN weekly_budget_normal_cents INT NULL'); } catch (Throwable $e) {}
+        try { $dbh->exec('ALTER TABLE tenant_settings ADD COLUMN weekly_budget_travel_cents INT NULL'); } catch (Throwable $e) {}
+
         if ($method === 'GET') {
-            $out = ['default_currency' => null];
+            $out = [
+                'default_currency' => null,
+                'weekly_budget_normal_cents' => null,
+                'weekly_budget_travel_cents' => null,
+            ];
             if ($this->tableExists($dbh,'tenant_settings')) {
-                $st=$dbh->prepare('SELECT default_currency FROM tenant_settings WHERE tenant_id=?');
+                $st=$dbh->prepare('SELECT default_currency, weekly_budget_normal_cents, weekly_budget_travel_cents FROM tenant_settings WHERE tenant_id=?');
                 $st->execute([$tenantId]);
-                $row=$st->fetch(); if($row){ $out['default_currency']=$row['default_currency']; }
+                $row=$st->fetch(); if($row){
+                    $out['default_currency']=$row['default_currency'];
+                    $out['weekly_budget_normal_cents']= isset($row['weekly_budget_normal_cents']) ? (int)$row['weekly_budget_normal_cents'] : null;
+                    $out['weekly_budget_travel_cents']= isset($row['weekly_budget_travel_cents']) ? (int)$row['weekly_budget_travel_cents'] : null;
+                }
             }
             return $this->json($out);
         }
         if ($method === 'PUT' || $method === 'PATCH') {
             $b = $this->bodyJson();
-            $dc = strtoupper(mb_substr(trim($b['default_currency'] ?? ''),0,8));
-            if ($dc==='') return $this->json(['error'=>'default_currency required'],422);
-            // ensure table exists (idempotent)
-            $dbh->exec('CREATE TABLE IF NOT EXISTS tenant_settings (tenant_id INT PRIMARY KEY, default_currency VARCHAR(8) NULL, updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)');
-            // upsert
-            $st = $dbh->prepare('INSERT INTO tenant_settings (tenant_id, default_currency) VALUES (?,?) ON DUPLICATE KEY UPDATE default_currency=VALUES(default_currency)');
-            $st->execute([$tenantId,$dc]);
+            $dc = isset($b['default_currency']) ? strtoupper(mb_substr(trim($b['default_currency']),0,8)) : null;
+            $wbN = isset($b['weekly_budget_normal_cents']) ? (int)$b['weekly_budget_normal_cents'] : null;
+            $wbT = isset($b['weekly_budget_travel_cents']) ? (int)$b['weekly_budget_travel_cents'] : null;
+
+            // Upsert: use IFNULL(VALUES(col), col) to allow partial updates
+            $st = $dbh->prepare('INSERT INTO tenant_settings (tenant_id, default_currency, weekly_budget_normal_cents, weekly_budget_travel_cents)
+                                 VALUES (?,?,?,?)
+                                 ON DUPLICATE KEY UPDATE
+                                   default_currency = IFNULL(VALUES(default_currency), default_currency),
+                                   weekly_budget_normal_cents = IFNULL(VALUES(weekly_budget_normal_cents), weekly_budget_normal_cents),
+                                   weekly_budget_travel_cents = IFNULL(VALUES(weekly_budget_travel_cents), weekly_budget_travel_cents)');
+            $st->execute([$tenantId, $dc, $wbN, $wbT]);
             return $this->json(['ok'=>true]);
         }
         return $this->json(['error'=>'Method not allowed'],405);

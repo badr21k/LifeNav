@@ -917,8 +917,9 @@ const categoryIcons = {
 
 // Helper functions
 const getStartOfWeek = (date) => {
-    const day = date.getDay();
-    const diff = (day === 0 ? -6 : 1 - day);
+    // Start week on Sunday
+    const day = date.getDay(); // 0=Sun..6=Sat
+    const diff = -day; // move back to Sunday of this week
     const start = new Date(date);
     start.setDate(start.getDate() + diff);
     start.setHours(0, 0, 0, 0);
@@ -1014,9 +1015,13 @@ function App() {
                 // default currency from server settings
                 try {
                     const s = await apiGet('/finance/api/settings');
-                    if (s && s.default_currency) {
-                        if (!mounted) return; setState(prev=>({ ...prev, baseCurrency: s.default_currency }));
-                    }
+                    if (!mounted) return;
+                    setState(prev => ({
+                        ...prev,
+                        baseCurrency: s?.default_currency || prev.baseCurrency,
+                        weeklyBudgetNormal: typeof s?.weekly_budget_normal_cents === 'number' ? s.weekly_budget_normal_cents/100 : prev.weeklyBudgetNormal,
+                        weeklyBudgetTravel: typeof s?.weekly_budget_travel_cents === 'number' ? s.weekly_budget_travel_cents/100 : prev.weeklyBudgetTravel,
+                    }));
                 } catch(_e){}
                 // currencies list for symbol mapping and selectors
                 try {
@@ -1068,7 +1073,7 @@ function App() {
                 symbol: (state.currencies.find(c=>c.code===(r.currency||'CAD'))?.symbol) || 'C$',
                 date: r.date,
                 description: r.note || r.merchant || '',
-                countWeekly: true,
+                countWeekly: r.hasOwnProperty('count_weekly') ? !!r.count_weekly : true,
                 recurring: false
             }));
             setState(prev=>({ ...prev, expenses: rows, dataSource: 'Database', maps: { catByName, subByCatName, pmByName } }));
@@ -1167,7 +1172,7 @@ function App() {
     };
 
     // Save budgets
-    const saveBudgets = () => {
+    const saveBudgets = async () => {
         const weeklyBudgetNormal = parseFloat(document.getElementById('weekly-budget-normal')?.value) || 0;
         const travelBudget = parseFloat(document.getElementById('travel-budget')?.value) || 0;
         const weeklyBudgetTravel = parseFloat(document.getElementById('weekly-budget-travel')?.value) || 0;
@@ -1179,6 +1184,15 @@ function App() {
             travelBudget: prev.mode === 'travel' ? travelBudget : prev.travelBudget,
             weeklyBudgetTravel: prev.mode === 'travel' ? weeklyBudgetTravel : prev.weeklyBudgetTravel,
         }));
+        // Persist to tenant settings (partial update)
+        try {
+            const payload = {};
+            if (state.mode === 'normal') payload.weekly_budget_normal_cents = Math.round(weeklyBudgetNormal * 100);
+            if (state.mode === 'travel') {
+                payload.weekly_budget_travel_cents = Math.round(weeklyBudgetTravel * 100);
+            }
+            await apiSend('PUT','/finance/api/settings', payload);
+        } catch(_e) {}
     };
 
     // Save expense (DB)
@@ -1207,7 +1221,7 @@ function App() {
         const subId = subcategory ? ((state.maps.subByCatName[category]||{})[subcategory] || null) : null;
         if (!catId) { setState(prev=>({ ...prev, error: 'Unknown category' })); return; }
 
-        const payload = { date: dateInput.value, amount_cents: Math.round(amount*100), currency, category_id: catId, subcategory_id: subId, payment_method_id: null, merchant: '', note };
+        const payload = { date: dateInput.value, amount_cents: Math.round(amount*100), currency, category_id: catId, subcategory_id: subId, payment_method_id: null, merchant: '', note, count_weekly: !!document.getElementById('count-weekly')?.checked };
         try {
             if (state.editingId) await apiSend('PUT', `/essentials/api/expenses/${encodeURIComponent(state.editingId)}`, payload);
             else await apiSend('POST', '/essentials/api/expenses', payload);
@@ -1610,9 +1624,18 @@ function App() {
                     <i className={`fas ${state.mode === 'normal' ? 'fa-home' : 'fa-plane'}`}></i>
                     <span>{state.mode.charAt(0).toUpperCase() + state.mode.slice(1)} Mode</span>
                 </div>
-                <div className="mode-indicator" style={{marginTop:'0.5rem'}}>
-                    <i className="fas fa-database"></i>
-                    <span>Data source: {state.dataSource}</span>
+                <div className="mode-indicator" style={{marginTop:'0.5rem', display:'flex', gap:'.75rem', flexWrap:'wrap'}}>
+                    <span style={{display:'flex', alignItems:'center', gap:'.5rem'}}>
+                        <i className="fas fa-database"></i>
+                        <span>Data source: {state.dataSource}</span>
+                    </span>
+                    <span style={{display:'flex', alignItems:'center', gap:'.5rem'}}>
+                        <i className="fas fa-calendar-week"></i>
+                        <span>
+                            Week: {getStartOfWeek(new Date()).toISOString().split('T')[0]} 
+                            – {getEndOfWeek(new Date()).toISOString().split('T')[0]}
+                        </span>
+                    </span>
                 </div>
 
                 {state.showCharts && (
