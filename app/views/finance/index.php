@@ -1,8 +1,3 @@
-        // Render a skeleton table row with N columns
-        function renderSkeletonRow(cols){
-            const tr=document.createElement('tr');
-            for(let i=0;i<cols;i++){ const td=document.createElement('td'); td.innerHTML='<div class="skeleton"></div>'; tr.appendChild(td);} return tr;
-        }
 <?php require 'app/views/templates/header.php'; ?>
 
 <head>
