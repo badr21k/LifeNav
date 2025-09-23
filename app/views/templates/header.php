@@ -193,6 +193,23 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
               if (toggler){ toggler.setAttribute('aria-expanded','false'); toggler.classList.add('collapsed'); }
             }
           });
+
+          // Dropdown accessibility and close behavior for user menus (desktop + mobile)
+          function wireDropdown(triggerId, menuId){
+            var trigger = document.getElementById(triggerId);
+            var menu = document.getElementById(menuId);
+            if (!trigger || !menu) return;
+            var bsDrop = null; try { bsDrop = (window.bootstrap && bootstrap.Dropdown) ? bootstrap.Dropdown.getOrCreateInstance(trigger, { autoClose: true }) : null; } catch(_) {}
+
+            function hideDrop(){ try { bsDrop && bsDrop.hide(); } catch(_) {} }
+            function focusFirst(){ var first = menu.querySelector('.dropdown-item, a[role="menuitem"], button[role="menuitem"]'); if (first) first.focus({ preventScroll: true }); }
+
+            trigger.addEventListener('shown.bs.dropdown', function(){ trigger.setAttribute('aria-expanded','true'); focusFirst(); });
+            trigger.addEventListener('hidden.bs.dropdown', function(){ trigger.setAttribute('aria-expanded','false'); trigger.focus({ preventScroll: true }); });
+            menu.addEventListener('keydown', function(e){ if(e.key==='Escape'){ hideDrop(); } });
+            menu.addEventListener('click', function(e){ if(e.target.closest('.dropdown-item')){ hideDrop(); if (navEl.classList.contains('show')) closeMenu(); } });
+          }
+
           wireDropdown('userMenu','userMenuMenu');
           wireDropdown('userMenuMobile','userMenuMobileMenu');
         });
