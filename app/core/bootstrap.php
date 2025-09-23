@@ -41,6 +41,116 @@ function lifenav_bootstrap(): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
   }
 
+  /* -------------------- Finance tables (tenant-scoped) -------------------- */
+  // accounts
+  if (!ln_table_exists($dbh,'accounts')) {
+    ln_exec_silent($dbh, "CREATE TABLE accounts (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tenant_id INT NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      type VARCHAR(40) NOT NULL,
+      currency VARCHAR(8) NOT NULL DEFAULT 'CAD',
+      opening_balance_cents INT NOT NULL DEFAULT 0,
+      active TINYINT(1) NOT NULL DEFAULT 1,
+      UNIQUE KEY uq_accounts_tenant_name (tenant_id, name),
+      INDEX idx_accounts_tenant (tenant_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+  } else {
+    if (!ln_column_exists($dbh,'accounts','tenant_id')) ln_exec_silent($dbh, "ALTER TABLE accounts ADD COLUMN tenant_id INT NOT NULL");
+    if (!ln_column_exists($dbh,'accounts','opening_balance_cents')) ln_exec_silent($dbh, "ALTER TABLE accounts ADD COLUMN opening_balance_cents INT NOT NULL DEFAULT 0");
+    if (!ln_column_exists($dbh,'accounts','active')) ln_exec_silent($dbh, "ALTER TABLE accounts ADD COLUMN active TINYINT(1) NOT NULL DEFAULT 1");
+    if (!ln_index_exists($dbh,'accounts','idx_accounts_tenant')) ln_exec_silent($dbh, "CREATE INDEX idx_accounts_tenant ON accounts(tenant_id)");
+    if (!ln_index_exists($dbh,'accounts','uq_accounts_tenant_name')) ln_exec_silent($dbh, "CREATE UNIQUE INDEX uq_accounts_tenant_name ON accounts(tenant_id, name)");
+  }
+
+  // budgets
+  if (!ln_table_exists($dbh,'budgets')) {
+    ln_exec_silent($dbh, "CREATE TABLE budgets (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tenant_id INT NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      period_type ENUM('monthly','weekly','custom') NOT NULL DEFAULT 'monthly',
+      start_date DATE NULL,
+      end_date DATE NULL,
+      currency VARCHAR(8) NOT NULL DEFAULT 'CAD',
+      UNIQUE KEY uq_budgets_tenant_name (tenant_id, name),
+      INDEX idx_budgets_tenant (tenant_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+  } else {
+    if (!ln_column_exists($dbh,'budgets','tenant_id')) ln_exec_silent($dbh, "ALTER TABLE budgets ADD COLUMN tenant_id INT NOT NULL");
+    if (!ln_index_exists($dbh,'budgets','idx_budgets_tenant')) ln_exec_silent($dbh, "CREATE INDEX idx_budgets_tenant ON budgets(tenant_id)");
+    if (!ln_index_exists($dbh,'budgets','uq_budgets_tenant_name')) ln_exec_silent($dbh, "CREATE UNIQUE INDEX uq_budgets_tenant_name ON budgets(tenant_id, name)");
+  }
+
+  // budget_lines
+  if (!ln_table_exists($dbh,'budget_lines')) {
+    ln_exec_silent($dbh, "CREATE TABLE budget_lines (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      budget_id INT NOT NULL,
+      category_id INT NULL,
+      subcategory_id INT NULL,
+      name VARCHAR(120) NOT NULL,
+      planned_cents INT NOT NULL DEFAULT 0,
+      INDEX idx_budget_lines_budget (budget_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+  } else {
+    if (!ln_index_exists($dbh,'budget_lines','idx_budget_lines_budget')) ln_exec_silent($dbh, "CREATE INDEX idx_budget_lines_budget ON budget_lines(budget_id)");
+  }
+
+  // savings_goals
+  if (!ln_table_exists($dbh,'savings_goals')) {
+    ln_exec_silent($dbh, "CREATE TABLE savings_goals (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tenant_id INT NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      target_cents INT NOT NULL,
+      saved_cents INT NOT NULL DEFAULT 0,
+      deadline DATE NULL,
+      currency VARCHAR(8) NOT NULL DEFAULT 'CAD',
+      UNIQUE KEY uq_savings_goals_tenant_name (tenant_id, name),
+      INDEX idx_savings_goals_tenant_deadline (tenant_id, deadline)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+  } else {
+    if (!ln_column_exists($dbh,'savings_goals','tenant_id')) ln_exec_silent($dbh, "ALTER TABLE savings_goals ADD COLUMN tenant_id INT NOT NULL");
+    if (!ln_column_exists($dbh,'savings_goals','saved_cents')) ln_exec_silent($dbh, "ALTER TABLE savings_goals ADD COLUMN saved_cents INT NOT NULL DEFAULT 0");
+    if (!ln_index_exists($dbh,'savings_goals','idx_savings_goals_tenant_deadline')) ln_exec_silent($dbh, "CREATE INDEX idx_savings_goals_tenant_deadline ON savings_goals(tenant_id, deadline)");
+    if (!ln_index_exists($dbh,'savings_goals','uq_savings_goals_tenant_name')) ln_exec_silent($dbh, "CREATE UNIQUE INDEX uq_savings_goals_tenant_name ON savings_goals(tenant_id, name)");
+  }
+
+  // income
+  if (!ln_table_exists($dbh,'income')) {
+    ln_exec_silent($dbh, "CREATE TABLE income (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tenant_id INT NOT NULL,
+      date DATE NOT NULL,
+      amount_cents INT NOT NULL,
+      source VARCHAR(120) NOT NULL,
+      notes VARCHAR(255) NULL,
+      currency VARCHAR(8) NOT NULL DEFAULT 'CAD',
+      account_id INT NULL,
+      INDEX idx_income_tenant_date (tenant_id, date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+  } else {
+    if (!ln_index_exists($dbh,'income','idx_income_tenant_date')) ln_exec_silent($dbh, "CREATE INDEX idx_income_tenant_date ON income(tenant_id, date)");
+  }
+
+  // transfers
+  if (!ln_table_exists($dbh,'transfers')) {
+    ln_exec_silent($dbh, "CREATE TABLE transfers (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tenant_id INT NOT NULL,
+      date DATE NOT NULL,
+      amount_cents INT NOT NULL,
+      from_account_id INT NOT NULL,
+      to_account_id INT NOT NULL,
+      notes VARCHAR(255) NULL,
+      currency VARCHAR(8) NOT NULL DEFAULT 'CAD',
+      INDEX idx_transfers_tenant_date (tenant_id, date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+  } else {
+    if (!ln_index_exists($dbh,'transfers','idx_transfers_tenant_date')) ln_exec_silent($dbh, "CREATE INDEX idx_transfers_tenant_date ON transfers(tenant_id, date)");
+  }
+
   // users
   if (!ln_table_exists($dbh,'users')) {
     ln_exec_silent($dbh, "CREATE TABLE users (

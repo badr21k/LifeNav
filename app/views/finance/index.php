@@ -1,3 +1,144 @@
+        // ---------------- Income UI -----------------
+        function getIncomeForm(id){
+            let r = null; if(id) r = financeData.income.find(x=>x.id===String(id));
+            const accOpts = (financeData.accounts||[]).map(a=>`<option value="${a.id}" ${r&&r.account_id===a.id?'selected':''}>${a.name}</option>`).join('');
+            return `
+                <div class="form-group">
+                    <label for="income-date">Date</label>
+                    <input id="income-date" type="date" class="form-control" value="${r?r.date:new Date().toISOString().split('T')[0]}" required>
+                </div>
+                <div class="form-group">
+                    <label for="income-source">Source</label>
+                    <input id="income-source" class="form-control" value="${r?r.source:''}" required>
+                </div>
+                <div class="form-group">
+                    <label for="income-amount">Amount</label>
+                    <input id="income-amount" type="number" step="0.01" min="0" class="form-control" value="${r?r.amount:0}" required>
+                </div>
+                <div class="form-group">
+                    <label for="income-account">Account</label>
+                    <select id="income-account" class="form-control"><option value="">—</option>${accOpts}</select>
+                </div>
+                <div class="form-group">
+                    <label for="income-notes">Notes</label>
+                    <input id="income-notes" class="form-control" value="${r?r.notes:''}">
+                </div>
+            `;
+        }
+
+        async function saveIncome(id){
+            const payload = {
+                date: document.getElementById('income-date').value,
+                source: document.getElementById('income-source').value.trim(),
+                amount_cents: toCents(document.getElementById('income-amount').value),
+                account_id: document.getElementById('income-account').value,
+                notes: document.getElementById('income-notes').value.trim(),
+                currency: financeData.currency
+            };
+            if(id) await apiSend('PUT', `/finance/api/income/${encodeURIComponent(id)}`, payload);
+            else await apiSend('POST', '/finance/api/income', payload);
+            await loadData(); updateUI();
+        }
+
+        async function deleteIncome(id){
+            await apiSend('DELETE', `/finance/api/income/${encodeURIComponent(id)}`);
+            await loadData(); updateUI();
+        }
+
+        function updateIncomeList(){
+            const tbody = document.getElementById('income-list'); if(!tbody) return;
+            tbody.innerHTML='';
+            if(!financeData.income || financeData.income.length===0){
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><i class="fas fa-coins"></i> <p>No income</p></td></tr>`; return;
+            }
+            financeData.income.forEach(r=>{
+                const acc = (financeData.accounts||[]).find(a=>a.id===r.account_id);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${r.date}</td>
+                    <td>${r.source}</td>
+                    <td>${formatCurrency(r.amount)}</td>
+                    <td>${acc?acc.name:'—'}</td>
+                    <td>${r.notes||''}</td>
+                    <td>
+                        <button class="action-btn" onclick="openModal('income','${r.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="action-btn" onclick="deleteIncome('${r.id}')"><i class="fas fa-trash"></i></button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ---------------- Transfers UI -----------------
+        function getTransferForm(id){
+            let t = null; if(id) t = financeData.transfers.find(x=>x.id===String(id));
+            const accOptsFrom = (financeData.accounts||[]).map(a=>`<option value="${a.id}" ${t&&t.from_account_id===a.id?'selected':''}>${a.name}</option>`).join('');
+            const accOptsTo = (financeData.accounts||[]).map(a=>`<option value="${a.id}" ${t&&t.to_account_id===a.id?'selected':''}>${a.name}</option>`).join('');
+            return `
+                <div class="form-group">
+                    <label for="transfer-date">Date</label>
+                    <input id="transfer-date" type="date" class="form-control" value="${t?t.date:new Date().toISOString().split('T')[0]}" required>
+                </div>
+                <div class="form-group">
+                    <label for="transfer-from">From</label>
+                    <select id="transfer-from" class="form-control">${accOptsFrom}</select>
+                </div>
+                <div class="form-group">
+                    <label for="transfer-to">To</label>
+                    <select id="transfer-to" class="form-control">${accOptsTo}</select>
+                </div>
+                <div class="form-group">
+                    <label for="transfer-amount">Amount</label>
+                    <input id="transfer-amount" type="number" step="0.01" min="0" class="form-control" value="${t?t.amount:0}" required>
+                </div>
+                <div class="form-group">
+                    <label for="transfer-notes">Notes</label>
+                    <input id="transfer-notes" class="form-control" value="${t?t.notes:''}">
+                </div>
+            `;
+        }
+
+        async function saveTransfer(id){
+            const payload = {
+                date: document.getElementById('transfer-date').value,
+                from_account_id: document.getElementById('transfer-from').value,
+                to_account_id: document.getElementById('transfer-to').value,
+                amount_cents: toCents(document.getElementById('transfer-amount').value),
+                notes: document.getElementById('transfer-notes').value.trim(),
+                currency: financeData.currency
+            };
+            if(id) await apiSend('PUT', `/finance/api/transfers/${encodeURIComponent(id)}`, payload);
+            else await apiSend('POST', '/finance/api/transfers', payload);
+            await loadData(); updateUI();
+        }
+
+        async function deleteTransfer(id){
+            await apiSend('DELETE', `/finance/api/transfers/${encodeURIComponent(id)}`);
+            await loadData(); updateUI();
+        }
+
+        function updateTransfersList(){
+            const tbody = document.getElementById('transfers-list'); if(!tbody) return;
+            tbody.innerHTML='';
+            if(!financeData.transfers || financeData.transfers.length===0){
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><i class="fas fa-right-left"></i> <p>No transfers</p></td></tr>`; return;
+            }
+            financeData.transfers.forEach(t=>{
+                const from = (financeData.accounts||[]).find(a=>a.id===t.from_account_id);
+                const to = (financeData.accounts||[]).find(a=>a.id===t.to_account_id);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${t.date}</td>
+                    <td>${from?from.name:'—'}</td>
+                    <td>${to?to.name:'—'}</td>
+                    <td>${formatCurrency(t.amount)}</td>
+                    <td>${t.notes||''}</td>
+                    <td>
+                        <button class="action-btn" onclick="openModal('transfer','${t.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="action-btn" onclick="deleteTransfer('${t.id}')"><i class="fas fa-trash"></i></button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        }
 
 <?php require 'app/views/templates/header.php'; ?>
 
@@ -821,6 +962,119 @@ body {
         <header class="header">
             <div class="logo">
             </div>
+
+        <!-- Income Section -->
+        <div class="section" id="income">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Income</div>
+                    <button class="btn btn-primary" onclick="openModal('income')">
+                        <i class="fas fa-plus"></i>
+                        <span>Add Income</span>
+                    </button>
+                </div>
+                <div class="expense-table-container">
+                    <table class="expense-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Source</th>
+                                <th>Amount</th>
+                                <th>Account</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="income-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transfers Section -->
+        <div class="section" id="transfers">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Transfers</div>
+                    <button class="btn btn-primary" onclick="openModal('transfer')">
+                        <i class="fas fa-plus"></i>
+                        <span>Add Transfer</span>
+                    </button>
+                </div>
+                <div class="expense-table-container">
+                    <table class="expense-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Amount</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transfers-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budgets Section -->
+        <div class="section" id="budgets">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Budgets</div>
+                    <button class="btn btn-primary" onclick="openModal('budget')">
+                        <i class="fas fa-plus"></i>
+                        <span>Add Budget</span>
+                    </button>
+                </div>
+                <div class="expense-table-container">
+                    <table class="expense-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Period</th>
+                                <th>Date Range</th>
+                                <th>Currency</th>
+                                <th>Lines</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="budgets-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accounts Section -->
+        <div class="section" id="accounts">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Accounts</div>
+                    <button class="btn btn-primary" onclick="openModal('account')">
+                        <i class="fas fa-plus"></i>
+                        <span>Add Account</span>
+                    </button>
+                </div>
+                <div class="expense-table-container">
+                    <table class="expense-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Currency</th>
+                                <th>Opening Balance</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accounts-list">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
             <div class="controls">
                 <button class="theme-toggle" id="theme-toggle">
                     <i class="fas fa-moon"></i>
@@ -861,6 +1115,10 @@ body {
             <div class="tab" data-tab="shifts">Shifts</div>
             <div class="tab" data-tab="debts">Debts</div>
             <div class="tab" data-tab="investments">Investments</div>
+            <div class="tab" data-tab="budgets">Budgets</div>
+            <div class="tab" data-tab="income">Income</div>
+            <div class="tab" data-tab="transfers">Transfers</div>
+            <div class="tab" data-tab="accounts">Accounts</div>
             <div class="tab" data-tab="savings">Savings</div>
         </div>
 
@@ -1151,9 +1409,38 @@ body {
             investmentAccounts: [],
             investments: [],
             savingsGoals: [],
+            accounts: [],
             currency: 'USD',
             theme: 'light'
         };
+
+        // CSRF token provided by server for API calls
+        const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
+
+        // API helpers
+        async function apiGet(path) {
+            const res = await fetch(path, { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('API error: ' + res.status);
+            return res.json();
+        }
+        async function apiSend(method, path, body) {
+            const res = await fetch(path, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': CSRF_TOKEN
+                },
+                credentials: 'same-origin',
+                body: body ? JSON.stringify(body) : null
+            });
+            if (!res.ok) {
+                const t = await res.text();
+                throw new Error('API ' + method + ' ' + path + ' failed: ' + res.status + ' ' + t);
+            }
+            return res.status === 204 ? null : res.json();
+        }
+        const toCents = (n)=> Math.round((Number(n)||0)*100);
+        const fromCents = (c)=> (Number(c)||0)/100;
 
         // DOM Elements
         const themeToggle = document.getElementById('theme-toggle');
@@ -1167,13 +1454,14 @@ body {
         const paymentFormContent = document.getElementById('payment-form-content');
         const tabs = document.querySelectorAll('.tab');
         const sections = document.querySelectorAll('.section');
+        let lookup = { categories: [], subcategories: [] };
 
         // Initialize the application
-        function initApp() {
+        async function initApp() {
             loadCurrencies();
             loadTheme();
             setupEventListeners();
-            loadData();
+            await loadData();
             updateUI();
         }
 
@@ -1327,7 +1615,8 @@ body {
                 'debt': id ? 'Edit Debt' : 'Add Debt',
                 'investment-account': id ? 'Edit Investment Account' : 'Add Investment Account',
                 'investment': id ? 'Edit Investment' : 'Add Investment',
-                'savings': id ? 'Edit Savings Goal' : 'Add Savings Goal'
+                'savings': id ? 'Edit Savings Goal' : 'Add Savings Goal',
+                'account': id ? 'Edit Account' : 'Add Account'
             };
             return actions[type] || 'Add Item';
         }
@@ -1340,7 +1629,11 @@ body {
                 'debt': getDebtForm(id),
                 'investment-account': getInvestmentAccountForm(id),
                 'investment': getInvestmentForm(id),
-                'savings': getSavingsForm(id)
+                'savings': getSavingsForm(id),
+                'account': getAccountForm(id),
+                'budget': getBudgetForm(id),
+                'income': getIncomeForm(id),
+                'transfer': getTransferForm(id)
             };
             return forms[type] || '';
         }
@@ -1707,6 +2000,21 @@ body {
                 case 'savings':
                     saveSavingsGoal(id);
                     break;
+                case 'account':
+                    saveAccount(id);
+                    break;
+                case 'budget':
+                    saveBudget(id);
+                    break;
+                case 'budget-line':
+                    saveBudgetLine(id);
+                    break;
+                case 'income':
+                    saveIncome(id);
+                    break;
+                case 'transfer':
+                    saveTransfer(id);
+                    break;
             }
 
             closeModal();
@@ -1748,15 +2056,90 @@ body {
 
         // Data persistence
         function saveData() {
-            localStorage.setItem('financeHubData', JSON.stringify(financeData));
+            // Persist only preferences locally; data is server-backed now
+            try {
+                localStorage.setItem('financePrefs', JSON.stringify({
+                    theme: financeData.theme,
+                    currency: financeData.currency
+                }));
+            } catch (e) {}
         }
 
-        function loadData() {
-            const savedData = localStorage.getItem('financeHubData');
-            if (savedData) {
-                const parsedData = JSON.parse(savedData);
-                Object.assign(financeData, parsedData);
-            }
+        async function loadData() {
+            // Load prefs
+            try {
+                const prefs = JSON.parse(localStorage.getItem('financePrefs')||'{}');
+                if (prefs.theme) financeData.theme = prefs.theme;
+                if (prefs.currency) financeData.currency = prefs.currency;
+            } catch (e) {}
+
+            // Hydrate from backend
+            const init = await apiGet('/finance/api/init');
+            // Currency default from server
+            if (init.defaultCurrency) financeData.currency = init.defaultCurrency;
+
+            // Map savings goals (cents -> number)
+            financeData.savingsGoals = (init.goals||[]).map(g=>({
+                id: String(g.id),
+                name: g.name,
+                target: fromCents(g.target_cents),
+                saved: fromCents(g.saved_cents),
+                deadline: g.deadline || ''
+            }));
+
+            // Accounts (cents -> number for opening)
+            financeData.accounts = (init.accounts||[]).map(a=>({
+                id: String(a.id),
+                name: a.name,
+                type: a.type,
+                currency: a.currency,
+                opening_balance: fromCents(a.opening_balance_cents||0),
+                active: !!a.active
+            }));
+
+            // Lookup lists
+            lookup.categories = init.categories||[];
+            lookup.subcategories = init.subcategories||[];
+
+            // Budgets & lines
+            financeData.budgets = (init.budgets||[]).map(b=>({
+                id: String(b.id),
+                name: b.name,
+                period_type: b.period_type,
+                start_date: b.start_date || '',
+                end_date: b.end_date || '',
+                currency: b.currency,
+                lines: (b.lines||[]).map(l=>({
+                    id: String(l.id),
+                    budget_id: String(l.budget_id),
+                    category_id: l.category_id ? String(l.category_id) : '',
+                    subcategory_id: l.subcategory_id ? String(l.subcategory_id) : '',
+                    name: l.name,
+                    planned: fromCents(l.planned_cents||0)
+                }))
+            }));
+
+            // Income and transfers (cents -> number)
+            financeData.income = (init.income||[]).map(r=>({
+                id: String(r.id),
+                date: r.date,
+                amount: fromCents(r.amount_cents||0),
+                source: r.source || '',
+                notes: r.notes || '',
+                currency: r.currency || financeData.currency,
+                account_id: r.account_id ? String(r.account_id) : ''
+            }));
+            financeData.transfers = (init.transfers||[]).map(t=>({
+                id: String(t.id),
+                date: t.date,
+                amount: fromCents(t.amount_cents||0),
+                from_account_id: String(t.from_account_id),
+                to_account_id: String(t.to_account_id),
+                notes: t.notes || '',
+                currency: t.currency || financeData.currency
+            }));
+
+            // Leave employers/payRuns/shifts/debts/investments in-memory for now
         }
 
         // Update UI with current data
@@ -1769,6 +2152,242 @@ body {
             updateInvestmentAccountsList();
             updateInvestmentsList();
             updateSavingsList();
+            updateAccountsList();
+            updateBudgetsList();
+            updateIncomeList();
+            updateTransfersList();
+        }
+
+        // ---------------- Budgets UI -----------------
+        function getBudgetForm(id) {
+            let b = null; if (id) b = financeData.budgets.find(x=>x.id===String(id));
+            return `
+                <div class="form-group">
+                    <label for="budget-name">Name</label>
+                    <input id="budget-name" class="form-control" value="${b?b.name:''}" required>
+                </div>
+                <div class="form-group">
+                    <label for="budget-period">Period</label>
+                    <select id="budget-period" class="form-control">
+                        <option value="monthly" ${b&&b.period_type==='monthly'?'selected':''}>Monthly</option>
+                        <option value="weekly" ${b&&b.period_type==='weekly'?'selected':''}>Weekly</option>
+                        <option value="custom" ${b&&b.period_type==='custom'?'selected':''}>Custom</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="budget-start">Start Date</label>
+                    <input type="date" id="budget-start" class="form-control" value="${b?b.start_date:''}">
+                </div>
+                <div class="form-group">
+                    <label for="budget-end">End Date</label>
+                    <input type="date" id="budget-end" class="form-control" value="${b?b.end_date:''}">
+                </div>
+                <div class="form-group">
+                    <label for="budget-currency">Currency</label>
+                    <input id="budget-currency" class="form-control" value="${b?b.currency:(financeData.currency||'CAD')}" maxlength="8" required>
+                </div>
+            `;
+        }
+
+        function getBudgetLineForm(budgetId, lineId) {
+            const b = financeData.budgets.find(x=>x.id===String(budgetId));
+            const l = b && lineId ? b.lines.find(x=>x.id===String(lineId)) : null;
+            const catOpts = lookup.categories.map(c=>`<option value="${c.id}" ${l&&l.category_id===String(c.id)?'selected':''}>${c.name}</option>`).join('');
+            const subOpts = lookup.subcategories.map(s=>`<option value="${s.id}" ${l&&l.subcategory_id===String(s.id)?'selected':''}>${s.name}</option>`).join('');
+            return `
+                <div class="form-group">
+                    <label for="line-name">Line Name</label>
+                    <input id="line-name" class="form-control" value="${l?l.name:''}" required>
+                </div>
+                <div class="form-group">
+                    <label for="line-planned">Planned Amount</label>
+                    <input id="line-planned" class="form-control" type="number" step="0.01" min="0" value="${l?l.planned:0}" required>
+                </div>
+                <div class="form-group">
+                    <label for="line-category">Category</label>
+                    <select id="line-category" class="form-control"><option value="">—</option>${catOpts}</select>
+                </div>
+                <div class="form-group">
+                    <label for="line-subcategory">Subcategory</label>
+                    <select id="line-subcategory" class="form-control"><option value="">—</option>${subOpts}</select>
+                </div>
+                <input type="hidden" id="line-budget-id" value="${budgetId}">
+            `;
+        }
+
+        async function saveBudget(id) {
+            const payload = {
+                name: document.getElementById('budget-name').value.trim(),
+                period_type: document.getElementById('budget-period').value,
+                start_date: document.getElementById('budget-start').value || null,
+                end_date: document.getElementById('budget-end').value || null,
+                currency: document.getElementById('budget-currency').value.trim().toUpperCase()
+            };
+            if (id) await apiSend('PUT', `/finance/api/budgets/${encodeURIComponent(id)}`, payload);
+            else { await apiSend('POST', '/finance/api/budgets', payload); }
+            await loadData(); updateUI();
+        }
+
+        async function deleteBudget(id) {
+            await apiSend('DELETE', `/finance/api/budgets/${encodeURIComponent(id)}`);
+            await loadData(); updateUI();
+        }
+
+        async function saveBudgetLine(lineId) {
+            const bid = document.getElementById('line-budget-id').value;
+            const payload = {
+                budget_id: bid,
+                name: document.getElementById('line-name').value.trim(),
+                planned_cents: toCents(document.getElementById('line-planned').value),
+                category_id: document.getElementById('line-category').value,
+                subcategory_id: document.getElementById('line-subcategory').value
+            };
+            if (lineId) await apiSend('PUT', `/finance/api/budget_lines/${encodeURIComponent(lineId)}`, payload);
+            else await apiSend('POST', '/finance/api/budget_lines', payload);
+            await loadData(); updateUI();
+        }
+
+        async function deleteBudgetLine(lineId) {
+            await apiSend('DELETE', `/finance/api/budget_lines/${encodeURIComponent(lineId)}`);
+            await loadData(); updateUI();
+        }
+
+        function updateBudgetsList() {
+            const tbody = document.getElementById('budgets-list'); if(!tbody) return;
+            tbody.innerHTML='';
+            if (!financeData.budgets || financeData.budgets.length===0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><i class="fas fa-list"></i> <p>No budgets yet</p></td></tr>`;
+                return;
+            }
+            financeData.budgets.forEach(b=>{
+                const linesTable = (b.lines||[]).map(l=>`
+                    <tr>
+                        <td colspan="2">${l.name}</td>
+                        <td>${formatCurrency(l.planned)}</td>
+                        <td>
+                           <button class="action-btn" onclick="openBudgetLineModal('${b.id}','${l.id}')"><i class="fas fa-edit"></i></button>
+                           <button class="action-btn" onclick="deleteBudgetLine('${l.id}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${b.name}</td>
+                    <td>${b.period_type}</td>
+                    <td>${(b.start_date||'')}${b.end_date?(' → '+b.end_date):''}</td>
+                    <td>${b.currency}</td>
+                    <td>
+                        <table style="width:100%">
+                            <thead><tr><th colspan="2">Line</th><th>Planned</th><th>Actions</th></tr></thead>
+                            <tbody>${linesTable || '<tr><td colspan=4 class="text-muted">No lines</td></tr>'}</tbody>
+                        </table>
+                        <div style="margin-top:0.5rem"><button class="btn" onclick="openBudgetLineModal('${b.id}')"><i class="fas fa-plus"></i> Add Line</button></div>
+                    </td>
+                    <td>
+                        <button class="action-btn" onclick="openModal('budget','${b.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="action-btn" onclick="deleteBudget('${b.id}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Helpers to open modals for budget and line
+        function openBudgetLineModal(budgetId, lineId=null){
+            modalTitle.textContent = lineId ? 'Edit Budget Line' : 'Add Budget Line';
+            modalFormContent.innerHTML = getBudgetLineForm(budgetId, lineId);
+            modal.classList.add('active');
+            modal.setAttribute('data-type', 'budget-line');
+            if(lineId) modal.setAttribute('data-id', lineId);
+        }
+
+        // ---------------- Accounts UI -----------------
+        function getAccountForm(id) {
+            let acc = null;
+            if (id) acc = financeData.accounts.find(a => a.id === String(id));
+            return `
+                <div class="form-group">
+                    <label for="account-name">Name</label>
+                    <input type="text" id="account-name" class="form-control" value="${acc?acc.name:''}" required>
+                </div>
+                <div class="form-group">
+                    <label for="account-type">Type</label>
+                    <select id="account-type" class="form-control" required>
+                        <option value="cash" ${acc&&acc.type==='cash'?'selected':''}>Cash</option>
+                        <option value="bank" ${acc&&acc.type==='bank'?'selected':''}>Bank</option>
+                        <option value="credit" ${acc&&acc.type==='credit'?'selected':''}>Credit</option>
+                        <option value="investment" ${acc&&acc.type==='investment'?'selected':''}>Investment</option>
+                        <option value="other" ${acc&&acc.type==='other'?'selected':''}>Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="account-currency">Currency</label>
+                    <input type="text" id="account-currency" class="form-control" value="${acc?acc.currency:(financeData.currency||'CAD')}" maxlength="8" required>
+                </div>
+                <div class="form-group">
+                    <label for="account-opening">Opening Balance</label>
+                    <input type="number" id="account-opening" class="form-control" step="0.01" min="0" value="${acc?acc.opening_balance:0}" required>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-group">
+                        <input type="checkbox" id="account-active" ${!acc || acc.active ? 'checked' : ''}/> Active
+                    </label>
+                </div>
+            `;
+        }
+
+        async function saveAccount(id) {
+            const name = document.getElementById('account-name').value.trim();
+            const type = document.getElementById('account-type').value;
+            const currency = document.getElementById('account-currency').value.trim().toUpperCase();
+            const opening = parseFloat(document.getElementById('account-opening').value)||0;
+            const active = document.getElementById('account-active').checked;
+
+            const payload = {
+                name, type, currency,
+                opening_balance_cents: toCents(opening),
+                active: active ? 1 : 0
+            };
+
+            if (id) {
+                await apiSend('PUT', `/finance/api/accounts/${encodeURIComponent(id)}`, payload);
+            } else {
+                await apiSend('POST', '/finance/api/accounts', payload);
+            }
+
+            await loadData();
+            updateUI();
+        }
+
+        async function deleteAccount(id) {
+            await apiSend('DELETE', `/finance/api/accounts/${encodeURIComponent(id)}`);
+            await loadData();
+            updateUI();
+        }
+
+        function updateAccountsList() {
+            const tbody = document.getElementById('accounts-list');
+            if (!tbody) return;
+            tbody.innerHTML='';
+            if ((financeData.accounts||[]).length===0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><i class="fas fa-wallet"></i> <p>No accounts yet</p></td></tr>`;
+                return;
+            }
+            financeData.accounts.forEach(a=>{
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${a.name}</td>
+                    <td>${a.type}</td>
+                    <td>${a.currency}</td>
+                    <td>${formatCurrency(a.opening_balance)}</td>
+                    <td>${a.active? 'Yes':'No'}</td>
+                    <td>
+                        <button class="action-btn" onclick="openModal('account','${a.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="action-btn" onclick="deleteAccount('${a.id}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         function updateSummaryCards() {
@@ -2533,37 +3152,33 @@ body {
             updateUI();
         }
 
-        function saveSavingsGoal(id) {
+        async function saveSavingsGoal(id) {
             const name = document.getElementById('savings-goal').value;
             const target = parseFloat(document.getElementById('savings-target').value);
             const saved = parseFloat(document.getElementById('savings-saved').value);
             const deadline = document.getElementById('savings-deadline').value;
 
+            const payload = {
+                name,
+                target_cents: toCents(target),
+                saved_cents: toCents(saved),
+                deadline: deadline || null,
+                currency: financeData.currency
+            };
+
             if (id) {
-                // Update existing goal
-                const index = financeData.savingsGoals.findIndex(g => g.id === id);
-                if (index !== -1) {
-                    financeData.savingsGoals[index] = { id, name, target, saved, deadline };
-                }
+                await apiSend('PUT', `/finance/api/savings_goals/${encodeURIComponent(id)}`, payload);
             } else {
-                // Add new goal
-                const newGoal = {
-                    id: Date.now().toString(),
-                    name,
-                    target,
-                    saved,
-                    deadline
-                };
-                financeData.savingsGoals.push(newGoal);
+                await apiSend('POST', '/finance/api/savings_goals', payload);
             }
 
-            saveData();
+            await loadData();
             updateUI();
         }
 
-        function deleteSavingsGoal(id) {
-            financeData.savingsGoals = financeData.savingsGoals.filter(g => g.id !== id);
-            saveData();
+        async function deleteSavingsGoal(id) {
+            await apiSend('DELETE', `/finance/api/savings_goals/${encodeURIComponent(id)}`);
+            await loadData();
             updateUI();
         }
 

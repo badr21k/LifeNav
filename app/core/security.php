@@ -26,3 +26,21 @@ function csrf_verify(): void {
         exit;
     }
 }
+
+// Verify CSRF via header for JSON APIs (e.g., X-CSRF-Token)
+function csrf_verify_header(string $headerName = 'X-CSRF-Token'): void {
+    // Accept only for state-changing verbs
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    if (!in_array($method, ['POST','PUT','PATCH','DELETE'], true)) return;
+    $headerKey = 'HTTP_' . strtoupper(str_replace('-', '_', $headerName));
+    $sent = (string)($_SERVER[$headerKey] ?? '');
+    $valid = is_string($sent) && $sent !== '' && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $sent);
+    // rotate token regardless
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    if (!$valid) {
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Invalid CSRF token']);
+        exit;
+    }
+}
