@@ -1785,11 +1785,7 @@ function App() {
                             </button>
                             <button
                                 className="btn btn-primary"
-                                onClick={() =>
-                                    state.currentSubcategory
-                                        ? openModal('add-expense')
-                                        : setState(prev => ({ ...prev, error: 'Please select a subcategory first' }))
-                                }
+                                onClick={() => openModal('add-expense')}
                                 aria-label="Add expense"
                             >
                                 <i className="fas fa-plus"></i><span>Add Expense</span>
