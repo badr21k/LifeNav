@@ -1062,10 +1062,6 @@
 <body>
     <div class="container">
         <header class="header">
-            <div class="logo">
-                <div class="logo-icon">F</div>
-                <div class="logo-text">Finance Hub</div>
-            </div>
             <div class="controls">
                 <div class="currency-selector-wrapper">
                     <input id="currency-search" class="currency-typeahead" placeholder="Search currency (code or name)…" aria-label="Search currency" autocomplete="off" />
