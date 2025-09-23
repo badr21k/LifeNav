@@ -93,19 +93,36 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         // Mobile navbar: auto-collapse on link click or outside tap
         document.addEventListener('DOMContentLoaded', function(){
           var navEl = document.getElementById('navbarSupportedContent');
+          var toggler = document.querySelector('.navbar-toggler');
           if (!navEl) return;
           // Use Bootstrap Collapse API if available
           var bsCollapse = null;
-          try { bsCollapse = bootstrap && bootstrap.Collapse ? new bootstrap.Collapse(navEl, { toggle: false }) : null; } catch(_) {}
-          // Collapse when a nav-link is clicked
+          try { bsCollapse = (window.bootstrap && bootstrap.Collapse) ? new bootstrap.Collapse(navEl, { toggle: false }) : null; } catch(_) {}
+
+          function closeMenu(){
+            try { if (bsCollapse) { bsCollapse.hide(); return; } } catch(_) {}
+            // Fallback if Bootstrap isn't ready: manually collapse
+            navEl.classList.remove('show');
+            if (toggler){ toggler.setAttribute('aria-expanded','false'); toggler.classList.add('collapsed'); }
+          }
+
+          // Close on nav link tap
           navEl.addEventListener('click', function(e){
             var a = e.target.closest('a.nav-link');
-            if (a && bsCollapse) { bsCollapse.hide(); }
+            if (a) closeMenu();
           });
-          // Collapse when clicking outside of the navbar while it is shown
+          // Close when clicking outside
           document.addEventListener('click', function(e){
             if (!navEl.classList.contains('show')) return;
-            if (!e.target.closest('.navbar')) { try { bsCollapse && bsCollapse.hide(); } catch(_) {} }
+            if (!e.target.closest('.navbar')) closeMenu();
+          });
+          // Close on Escape anywhere when menu is open
+          document.addEventListener('keydown', function(e){
+            if (e.key === 'Escape' && navEl.classList.contains('show')) closeMenu();
+          });
+          // Reset collapsed state on resize to avoid stuck aria states
+          window.addEventListener('resize', function(){
+            if (window.innerWidth >= 992) { navEl.classList.remove('show'); if (toggler){ toggler.setAttribute('aria-expanded','false'); toggler.classList.add('collapsed'); } }
           });
 
           // Dropdown accessibility and close behavior for user menus (desktop + mobile)
@@ -113,7 +130,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             var trigger = document.getElementById(triggerId);
             var menu = document.getElementById(menuId);
             if (!trigger || !menu) return;
-            var bsDrop = null; try { bsDrop = bootstrap && bootstrap.Dropdown ? new bootstrap.Dropdown(trigger, { autoClose: true }) : null; } catch(_) {}
+            var bsDrop = null; try { bsDrop = (window.bootstrap && bootstrap.Dropdown) ? new bootstrap.Dropdown(trigger, { autoClose: true }) : null; } catch(_) {}
 
             function focusFirstItem(){
               var first = menu.querySelector('.dropdown-item, a[role="menuitem"], button[role="menuitem"]');
@@ -129,8 +146,13 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             });
             // Close on escape manually (Bootstrap handles, but ensure)
             menu.addEventListener('keydown', function(e){ if(e.key==='Escape'){ try{ bsDrop && bsDrop.hide(); }catch(_){} } });
-            // Close after selecting an item
-            menu.addEventListener('click', function(e){ if(e.target.closest('.dropdown-item')){ try{ bsDrop && bsDrop.hide(); }catch(_){} } });
+            // Close after selecting an item and also close the collapsed navbar (mobile)
+            menu.addEventListener('click', function(e){
+              if(e.target.closest('.dropdown-item')){
+                try{ bsDrop && bsDrop.hide(); }catch(_){}
+                closeMenu();
+              }
+            });
           }
           wireDropdown('userMenu','userMenuMenu');
           wireDropdown('userMenuMobile','userMenuMobileMenu');
