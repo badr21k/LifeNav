@@ -32,6 +32,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --text:#111827; --text-light:#6b7280; --card:#ffffff; --background:#f8fafc; --border:#e5e7eb;
         --shadow-sm:0 2px 4px rgba(0,0,0,.06); --shadow-md:0 10px 20px rgba(2,6,12,.08);
         --header-h:64px;
+        --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       }
       [data-theme="dark"]{
         --primary:#4ca89b; --primary-dark:#3b867b; --primary-light:#1a3c34;
@@ -52,7 +53,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       .user-chip{ display:flex; align-items:center; gap:.5rem; font-weight:700; }
       .user-chip i{ opacity:.9; }
       .dropdown-menu{ z-index: 4000; box-shadow: var(--shadow-md); border:1px solid var(--border); background:var(--card); }
-      body{ background:var(--background); color:var(--text); font-family:'Inter', system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; padding-top: var(--header-h); }
+      body{ background:var(--background); color:var(--text); font-family: var(--font-sans); padding-top: var(--header-h); }
       .footer{ background:transparent; color:var(--text-light); border-top:1px solid var(--border); padding:1rem; text-align:center; }
     </style>
     <script>
