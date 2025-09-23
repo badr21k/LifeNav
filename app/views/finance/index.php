@@ -4,11 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance Hub - Modern Financial Manager</title>
+    <title>Earnings — LifeNav</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Dark theme overlay */
-        [data-theme="dark"] .loading-overlay { background: rgba(255,255,255,0.06); }
         :root {
             --primary: #2c6b5f;
             --primary-dark: #1f4b43;
@@ -32,23 +30,7 @@
             --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
-        [data-theme="dark"] {
-            --primary: #4ca89b;
-            --primary-dark: #3b867b;
-            --primary-light: #1a3c34;
-            --secondary: #9ca3af;
-            --accent: #f59e0b;
-            --background: #111827;
-            --card: #1f2a44;
-            --text: #f3f4f6;
-            --text-light: #d1d5db;
-            --border: #374151;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
+        /* Dark mode is managed globally via header template. */
 
         * {
             margin: 0;
