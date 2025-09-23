@@ -55,6 +55,11 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       .user-chip{ display:flex; align-items:center; gap:.5rem; font-weight:700; }
       .user-chip i{ opacity:.9; }
       .dropdown-menu{ z-index: 4000; box-shadow: var(--shadow-md); border:1px solid var(--border); background:var(--card); }
+      .dropdown-item{ color: var(--text); }
+      .dropdown-item:hover, .dropdown-item:focus{ background: var(--primary-light); color: var(--text); }
+      /* Nav buttons adapt to theme */
+      .navbar .btn-outline-secondary{ color: var(--text); border-color: var(--border); background: var(--card); }
+      .navbar .btn-outline-secondary:hover{ background: var(--primary-light); color: var(--text); border-color: var(--primary); }
       body{ background:var(--background); color:var(--text); font-family: var(--font-sans); padding-top: var(--header-h); }
       .footer{ background:transparent; color:var(--text-light); border-top:1px solid var(--border); padding:1rem; text-align:center; }
       /* Precise centering for header tabs on large screens */
@@ -88,11 +93,13 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           if (!navEl) return;
           // Use Bootstrap Collapse API if available
           var bsCollapse = null;
-          try { bsCollapse = bootstrap && bootstrap.Collapse ? new bootstrap.Collapse(navEl, { toggle: false }) : null; } catch(_) {}
+          try { bsCollapse = (window.bootstrap && window.bootstrap.Collapse) ? new window.bootstrap.Collapse(navEl, { toggle: false }) : null; } catch(_) {}
           // Collapse when a nav-link is clicked
           navEl.addEventListener('click', function(e){
-            var a = e.target.closest('a.nav-link');
-            if (a && bsCollapse) { bsCollapse.hide(); }
+            var closable = e.target.closest('[data-collapse-close]') || e.target.closest('a.nav-link');
+            if (!closable) return;
+            if (bsCollapse) { bsCollapse.hide(); }
+            else { navEl.classList.remove('show'); var toggler=document.querySelector('[data-bs-target="#navbarSupportedContent"]'); if(toggler){ toggler.setAttribute('aria-expanded','false'); } }
           });
           // Collapse when clicking outside of the navbar while it is shown
           document.addEventListener('click', function(e){
@@ -116,6 +123,17 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
+    <!-- Small-screen user menu -->
+    <div class="dropdown d-lg-none ms-2">
+      <button class="btn btn-outline-secondary btn-sm dropdown-toggle user-chip" type="button" id="userMenuSm" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fa-solid fa-user"></i>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuSm">
+        <li><button class="dropdown-item" type="button" onclick="toggleTheme()"><i class="fa-solid fa-moon me-2"></i>Toggle Dark Mode</button></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-danger" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
+      </ul>
+    </div>
 
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <!-- Centered Nav -->
@@ -129,6 +147,10 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         <li class="nav-item">
           <a class="nav-link<?= $active('finance') ?>" href="/finance"><i class="fa-solid fa-sack-dollar"></i> Earnings</a>
         </li>
+        <!-- Mobile-only actions -->
+        <li class="nav-item d-lg-none"><button class="nav-link btn btn-link p-0" data-collapse-close="1" type="button" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i> Toggle Dark Mode</button></li>
+        <li class="nav-item d-lg-none"><a class="nav-link text-danger" data-collapse-close="1" href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+      </ul>
     </div>
 
     <!-- Right (User menu) -->
