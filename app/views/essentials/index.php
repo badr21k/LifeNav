@@ -40,7 +40,8 @@
             padding: 1.5rem;
             padding-left: calc(1.5rem + var(--safe-area-inset-left));
             padding-right: calc(1.5rem + var(--safe-area-inset-right));
-            padding-top: calc(1.5rem + var(--safe-area-inset-top));
+            /* Offset fixed global header height plus base spacing */
+            padding-top: calc(var(--header-h) + 1rem + var(--safe-area-inset-top));
             padding-bottom: calc(1.5rem + var(--safe-area-inset-bottom));
             font-size: 0.9375rem;
             font-weight: 400;
