@@ -211,14 +211,17 @@ class Finance extends Controller {
     public function api($resource = null, $id = null) {
         $this->requireAuth();
 
-        // CSRF header check on mutating requests
-        if (function_exists('csrf_verify_header')) csrf_verify_header('X-CSRF-Token');
+        try {
+            // CSRF header check on mutating requests
+            if (function_exists('csrf_verify_header')) csrf_verify_header('X-CSRF-Token');
 
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $tenantId = $this->tenantId();
-        $dbh = db_connect();
+            $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+            $tenantId = $this->tenantId();
+            $dbh = db_connect();
 
-        switch ($resource) {
+            switch ($resource) {
+                case 'ping':
+                    return $this->json(['ok'=>true,'tenant_id'=>$tenantId]);
             case 'init':
                 if ($method !== 'GET') return $this->json(['error'=>'Method not allowed'],405);
                 $resp = $this->initData($dbh, $tenantId);
@@ -249,8 +252,11 @@ class Finance extends Controller {
                 return $this->transfers($dbh, $tenantId, $method, $id);
 
             // TODO: budgets, budget_lines, income, transfers, reports
+            }
+            return $this->json(['error'=>'Not found'],404);
+        } catch (Throwable $e) {
+            return $this->json(['error'=>'Server error','message'=>$e->getMessage()],500);
         }
-        return $this->json(['error'=>'Not found'],404);
     }
 
     private function initData(PDO $dbh, int $tenantId): array {
