@@ -28,40 +28,34 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
       :root {
-        --primary: #2563eb;
-        --primary-dark: #1d4ed8;
-        --primary-light: #dbeafe;
-        --primary-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+        --primary: #2c6b5f;
+        --primary-dark: #1f4b43;
+        --primary-light: #e6f0ee;
         --text: #111827;
         --text-light: #6b7280;
-        --text-lighter: #9ca3af;
         --card: #ffffff;
         --background: #f8fafc;
         --border: #e5e7eb;
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-        --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.1);
-        --shadow-lg: 0 20px 40px -10px rgba(0,0,0,0.15);
+        --shadow-sm: 0 2px 4px rgba(0,0,0,.06);
+        --shadow-md: 0 10px 20px rgba(2,6,12,.08);
         --header-h: 72px;
         --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
         --radius-sm: .5rem;
         --radius-md: .75rem;
         --radius-lg: 1rem;
-        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition: all .25s cubic-bezier(.4,0,.2,1);
       }
       [data-theme="dark"] {
-        --primary: #3b82f6;
-        --primary-dark: #2563eb;
-        --primary-light: #1e3a8a;
-        --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-        --text: #f9fafb;
+        --primary: #4ca89b;
+        --primary-dark: #3b867b;
+        --primary-light: #1a3c34;
+        --text: #f3f4f6;
         --text-light: #d1d5db;
-        --text-lighter: #9ca3af;
-        --card: #111827;
-        --background: #0f172a;
-        --border: #374151;
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-        --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.4);
-        --shadow-lg: 0 20px 40px -10px rgba(0,0,0,0.5);
+        --card: #0f172a;
+        --background: #0b1220;
+        --border: #1f2a44;
+        --shadow-sm: 0 2px 4px rgba(0,0,0,.4);
+        --shadow-md: 0 10px 20px rgba(0,0,0,.5);
       }
       * {
         box-sizing: border-box;
@@ -80,7 +74,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         right: 0;
         z-index: 1030;
         min-height: var(--header-h);
-        backdrop-filter: saturate(180%) blur(20px);
+        backdrop-filter: saturate(180%) blur(10px);
         background: rgba(var(--card-rgb, 255, 255, 255), 0.85) !important;
         border-bottom: 1px solid var(--border);
         box-shadow: var(--shadow-sm);
@@ -88,46 +82,45 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         padding: 0.5rem 0;
       }
       [data-theme="dark"] .navbar-modern {
-        background: rgba(17, 24, 39, 0.85) !important;
-        backdrop-filter: saturate(180%) blur(20px);
+        background: rgba(15, 23, 42, 0.85) !important;
+        backdrop-filter: saturate(180%) blur(10px);
       }
       .navbar-brand {
         display: flex;
         align-items: center;
         gap: 0.75rem;
         font-weight: 800;
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         letter-spacing: -0.02em;
         color: var(--text);
         text-decoration: none;
         transition: var(--transition);
       }
       .brand-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-        background: var(--primary-gradient);
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-sm);
+        background: var(--primary);
         color: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 1.2rem;
-        box-shadow: var(--shadow-md);
+        font-size: 1.1rem;
+        box-shadow: 0 4px 12px rgba(44,107,95,.2);
         transition: var(--transition);
       }
       .navbar-brand:hover .brand-icon {
         transform: translateY(-1px);
-        box-shadow: var(--shadow-lg);
+        box-shadow: 0 6px 16px rgba(44,107,95,.3);
       }
       .nav-link {
         font-weight: 600;
         color: var(--text-light);
         padding: 0.75rem 1.25rem;
-        font-size: 0.95rem;
+        font-size: 1rem;
         border-radius: var(--radius-md);
         transition: var(--transition);
-        position: relative;
         display: flex;
         align-items: center;
         gap: 0.5rem;
@@ -171,11 +164,11 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         box-shadow: 0 0 0 2px var(--primary-light);
       }
       .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(33,37,41,0.75)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(44,107,95,0.75)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
         transition: var(--transition);
       }
       [data-theme="dark"] .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255,255,255,0.75)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(76,168,155,0.75)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
       }
       .user-chip {
         display: flex;
@@ -188,7 +181,6 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         background: var(--card);
         color: var(--text);
         transition: var(--transition);
-        text-decoration: none;
       }
       .user-chip:hover {
         border-color: var(--primary);
@@ -201,9 +193,10 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         font-size: 1.1rem;
       }
       .dropdown-menu {
+        z-index: 4000;
         border: 1px solid var(--border);
         border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-lg);
+        box-shadow: var(--shadow-md);
         background: var(--card);
         padding: 0.5rem;
         min-width: 200px;
@@ -218,10 +211,26 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         align-items: center;
         gap: 0.75rem;
       }
-      .dropdown-item:hover {
+      .dropdown-item:hover, .dropdown-item:focus {
         background: var(--primary-light);
         color: var(--primary);
         transform: translateX(5px);
+      }
+      .mobile-menu-backdrop {
+        position: fixed;
+        top: var(--header-h);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1029;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease-in-out;
+      }
+      .mobile-menu-backdrop.show {
+        opacity: 1;
+        pointer-events: all;
       }
       @media (max-width: 991.98px) {
         .navbar-collapse {
@@ -231,7 +240,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           right: 0;
           background: var(--card);
           border-top: 1px solid var(--border);
-          box-shadow: var(--shadow-lg);
+          box-shadow: var(--shadow-md);
           max-height: calc(100vh - var(--header-h));
           overflow-y: auto;
           padding: 1rem;
@@ -270,7 +279,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           display: grid;
           grid-template-columns: auto 1fr auto;
           align-items: center;
-          gap: 2rem;
+          gap: 1.5rem;
         }
         .navbar-collapse {
           display: flex !important;
@@ -279,30 +288,14 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         .navbar-nav {
           flex: 1;
           justify-content: center;
-          gap: 0.5rem;
+          gap: 1.25rem;
         }
-      }
-      .mobile-menu-backdrop {
-        position: fixed;
-        top: var(--header-h);
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1029;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease-in-out;
-      }
-      .mobile-menu-backdrop.show {
-        opacity: 1;
-        pointer-events: all;
       }
     </style>
 </head>
 <body>
 <div class="mobile-menu-backdrop" id="mobileMenuBackdrop"></div>
-<nav class="navbar navbar-expand-lg navbar-modern">
+<nav class="navbar navbar-expand-lg navbar-light navbar-modern">
   <div class="container-fluid">
     <a class="navbar-brand" href="/home">
       <span class="brand-icon">LN</span>
@@ -406,8 +399,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         }
       }
       navCollapse.addEventListener('click', function(e) {
-        if (e.target.closest('.nav-link') && window.innerWidth < 992) {
-          const link = e.target.closest('.nav-link');
+        const link = e.target.closest('.nav-link');
+        if (link && window.innerWidth < 992) {
           e.preventDefault();
           const href = link.getAttribute('href');
           setTimeout(() => {
