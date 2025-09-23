@@ -43,7 +43,23 @@
             --safe-area-inset-right: env(safe-area-inset-right, 0);
         }
 
-        /* Dark mode is managed globally via the header template */
+        [data-theme="dark"] {
+            --primary: #4ca89b;
+            --primary-dark: #3b867b;
+            --primary-light: #1a3c34;
+            --secondary: #9ca3af;
+            --accent: #f59e0b;
+            --background: #111827;
+            --card: #1f2a44;
+            --text: #f3f4f6;
+            --text-light: #d1d5db;
+            --border: #374151;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
 
         * {
             margin: 0;
