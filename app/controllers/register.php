@@ -3,6 +3,97 @@ class register extends Controller {
 
   private function db() { return db_connect(); }
 
+  // Simple column existence check
+  private function hasColumn(PDO $dbh, string $table, string $column): bool {
+    try {
+      $st = $dbh->query("SHOW COLUMNS FROM `{$table}` LIKE " . $dbh->quote($column));
+      return (bool)$st->fetch();
+    } catch (Throwable $e) { return false; }
+  }
+
+  // Ensure required reference data exists for the app to function (per-tenant if supported)
+  private function seedReferenceData(PDO $dbh, int $tenantId): void {
+    $catNames = [
+      'Transportation' => ['Car Insurance','Fuel','Parking','Public Transit','Other'],
+      'Accommodation'  => ['Rent','Mortgage','Utilities','Internet','Other'],
+      'Travel & Entertainment' => ['Flights','Hotels','Dining','Tours','Visas','Movies','Games','Sports','Concerts','Other'],
+      'Health' => ['Doctor Visits','Medications','Dental','Vision','Fitness','Other'],
+    ];
+
+    $tenantScopedCats = $this->hasColumn($dbh,'categories','tenant_id');
+    $tenantScopedSubs = $this->hasColumn($dbh,'subcategories','tenant_id');
+    $tenantScopedPMs  = $this->hasColumn($dbh,'payment_methods','tenant_id');
+
+    // Categories
+    if ($tenantScopedCats) {
+      // Upsert-by-name for this tenant
+      $sel = $dbh->prepare("SELECT id, name FROM categories WHERE tenant_id=?");
+      $sel->execute([$tenantId]);
+      $existing = [];
+      foreach ($sel->fetchAll() as $r) { $existing[strtolower($r['name'])] = (int)$r['id']; }
+      $ins = $dbh->prepare("INSERT INTO categories (tenant_id,name,active) VALUES (?,?,1)");
+      foreach (array_keys($catNames) as $name) {
+        if (!isset($existing[strtolower($name)])) { $ins->execute([$tenantId,$name]); }
+      }
+      // refresh map
+      $sel->execute([$tenantId]);
+      $catMap = [];
+      foreach ($sel->fetchAll() as $r) { $catMap[$r['name']] = (int)$r['id']; }
+    } else {
+      // Global fallback
+      $cnt = (int)$dbh->query("SELECT COUNT(*) FROM categories")->fetchColumn();
+      if ($cnt === 0) {
+        $ins = $dbh->prepare("INSERT INTO categories (name,active) VALUES (?,1)");
+        foreach (array_keys($catNames) as $name) { $ins->execute([$name]); }
+      }
+      // map names -> ids
+      $rows = $dbh->query("SELECT id,name FROM categories")->fetchAll();
+      $catMap = [];
+      foreach ($rows as $r) { $catMap[$r['name']] = (int)$r['id']; }
+    }
+
+    // Subcategories
+    if ($tenantScopedSubs) {
+      $sel = $dbh->prepare("SELECT category_id,name FROM subcategories WHERE tenant_id=?");
+      $sel->execute([$tenantId]);
+      $have = [];
+      foreach ($sel->fetchAll() as $r) { $have[strtolower($r['category_id'].'|'.$r['name'])] = true; }
+      $ins = $dbh->prepare("INSERT INTO subcategories (tenant_id,category_id,name,active) VALUES (?,?,?,1)");
+      foreach ($catNames as $catName => $subs) {
+        $cid = $catMap[$catName] ?? null; if (!$cid) continue;
+        foreach ($subs as $n) {
+          $key = strtolower($cid.'|'.$n);
+          if (!isset($have[$key])) { $ins->execute([$tenantId,$cid,$n]); }
+        }
+      }
+    } else {
+      $cnt = (int)$dbh->query("SELECT COUNT(*) FROM subcategories")->fetchColumn();
+      if ($cnt === 0) {
+        $ins = $dbh->prepare("INSERT INTO subcategories (category_id,name,active) VALUES (?,?,1)");
+        foreach ($catNames as $catName => $subs) {
+          $cid = $catMap[$catName] ?? null; if (!$cid) continue;
+          foreach ($subs as $n) { $ins->execute([$cid,$n]); }
+        }
+      }
+    }
+
+    // Payment methods
+    $pmNames = ['Cash','Debit','Credit','E-Transfer','Other'];
+    if ($tenantScopedPMs) {
+      $sel = $dbh->prepare("SELECT name FROM payment_methods WHERE tenant_id=?");
+      $sel->execute([$tenantId]);
+      $have = array_flip(array_map('strtolower', array_column($sel->fetchAll(),'name')));
+      $ins = $dbh->prepare("INSERT INTO payment_methods (tenant_id,name,active) VALUES (?,?,1)");
+      foreach ($pmNames as $n) { if (!isset($have[strtolower($n)])) { $ins->execute([$tenantId,$n]); } }
+    } else {
+      $cnt = (int)$dbh->query("SELECT COUNT(*) FROM payment_methods")->fetchColumn();
+      if ($cnt === 0) {
+        $ins = $dbh->prepare("INSERT INTO payment_methods (name,active) VALUES (?,1)");
+        foreach ($pmNames as $n) { $ins->execute([$n]); }
+      }
+    }
+  }
+
   // GET /register
   public function index() {
     // public page; if already logged in, bounce to home
@@ -63,6 +154,9 @@ class register extends Controller {
 
       $userId = (int)$dbh->lastInsertId();
       $dbh->commit();
+
+      // Seed reference data for this tenant (or global fallback)
+      $this->seedReferenceData($dbh, $tenantId);
 
       // log the user in
       $_SESSION['auth'] = [

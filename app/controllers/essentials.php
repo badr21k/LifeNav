@@ -7,6 +7,14 @@ class essentials extends Controller {
   private function tenantId(): int { return (int)($_SESSION['auth']['tenant_id'] ?? 1); }
   private function userId(): int   { return (int)($_SESSION['auth']['id'] ?? 0); }
 
+  // Check if a table has a specific column (backward compatible with pre-tenant schemas)
+  private function hasColumn(PDO $dbh, string $table, string $column): bool {
+    try {
+      $st = $dbh->query("SHOW COLUMNS FROM `{$table}` LIKE " . $dbh->quote($column));
+      return (bool)$st->fetch();
+    } catch (Throwable $e) { return false; }
+  }
+
   // GET /essentials
   public function index() {
     $this->requireAuth();
@@ -20,9 +28,21 @@ class essentials extends Controller {
     $pm   = (array)($_GET['payment_method'] ?? []);
     $tagId= $_GET['tag_id'] ?? '';
 
-    // data for selects
-    $categories = $dbh->query("SELECT * FROM categories WHERE active=1 ORDER BY id")->fetchAll();
-    $pms = $dbh->query("SELECT * FROM payment_methods WHERE active=1 ORDER BY id")->fetchAll();
+    // data for selects (tenant-aware if supported)
+    if ($this->hasColumn($dbh,'categories','tenant_id')) {
+      $st = $dbh->prepare("SELECT * FROM categories WHERE active=1 AND tenant_id=? ORDER BY id");
+      $st->execute([$tenantId]);
+      $categories = $st->fetchAll();
+    } else {
+      $categories = $dbh->query("SELECT * FROM categories WHERE active=1 ORDER BY id")->fetchAll();
+    }
+    if ($this->hasColumn($dbh,'payment_methods','tenant_id')) {
+      $st = $dbh->prepare("SELECT * FROM payment_methods WHERE active=1 AND tenant_id=? ORDER BY id");
+      $st->execute([$tenantId]);
+      $pms = $st->fetchAll();
+    } else {
+      $pms = $dbh->query("SELECT * FROM payment_methods WHERE active=1 ORDER BY id")->fetchAll();
+    }
     $st = $dbh->prepare("SELECT * FROM tags WHERE tenant_id=? ORDER BY name"); $st->execute([$tenantId]); $tags = $st->fetchAll();
 
     // query list
@@ -71,13 +91,30 @@ class essentials extends Controller {
   public function create() {
     $this->requireAuth();
     $dbh = db_connect();
-    $categories = $dbh->query("SELECT * FROM categories WHERE active=1 ORDER BY id")->fetchAll();
+    if ($this->hasColumn($dbh,'categories','tenant_id')) {
+      $st = $dbh->prepare("SELECT * FROM categories WHERE active=1 AND tenant_id=? ORDER BY id");
+      $st->execute([$this->tenantId()]);
+      $categories = $st->fetchAll();
+    } else {
+      $categories = $dbh->query("SELECT * FROM categories WHERE active=1 ORDER BY id")->fetchAll();
+    }
 
-    $subRows = $dbh->query("SELECT * FROM subcategories WHERE active=1 ORDER BY category_id, name")->fetchAll();
+    if ($this->hasColumn($dbh,'subcategories','tenant_id')) {
+      $st = $dbh->prepare("SELECT * FROM subcategories WHERE active=1 AND tenant_id=? ORDER BY category_id, name");
+      $st->execute([$this->tenantId()]);
+      $subRows = $st->fetchAll();
+    } else {
+      $subRows = $dbh->query("SELECT * FROM subcategories WHERE active=1 ORDER BY category_id, name")->fetchAll();
+    }
     $subsByCat = [];
     foreach ($subRows as $r) $subsByCat[$r['category_id']][] = $r;
-
-    $pms = $dbh->query("SELECT * FROM payment_methods WHERE active=1 ORDER BY id")->fetchAll();
+    if ($this->hasColumn($dbh,'payment_methods','tenant_id')) {
+      $st = $dbh->prepare("SELECT * FROM payment_methods WHERE active=1 AND tenant_id=? ORDER BY id");
+      $st->execute([$this->tenantId()]);
+      $pms = $st->fetchAll();
+    } else {
+      $pms = $dbh->query("SELECT * FROM payment_methods WHERE active=1 ORDER BY id")->fetchAll();
+    }
     $title = 'Add Expense';
     include 'app/views/essentials/create.php';
   }
@@ -125,10 +162,28 @@ class essentials extends Controller {
     $st = $dbh->prepare("SELECT * FROM expenses WHERE id=? AND tenant_id=? LIMIT 1"); $st->execute([$id,$tenantId]);
     $row = $st->fetch(); if (!$row) { http_response_code(404); $title='Not Found'; include 'app/views/errors/404.php'; return; }
 
-    $categories = $dbh->query("SELECT * FROM categories WHERE active=1 ORDER BY id")->fetchAll();
-    $subRows = $dbh->query("SELECT * FROM subcategories WHERE active=1 ORDER BY category_id, name")->fetchAll();
+    if ($this->hasColumn($dbh,'categories','tenant_id')) {
+      $st = $dbh->prepare("SELECT * FROM categories WHERE active=1 AND tenant_id=? ORDER BY id");
+      $st->execute([$this->tenantId()]);
+      $categories = $st->fetchAll();
+    } else {
+      $categories = $dbh->query("SELECT * FROM categories WHERE active=1 ORDER BY id")->fetchAll();
+    }
+    if ($this->hasColumn($dbh,'subcategories','tenant_id')) {
+      $st = $dbh->prepare("SELECT * FROM subcategories WHERE active=1 AND tenant_id=? ORDER BY category_id, name");
+      $st->execute([$this->tenantId()]);
+      $subRows = $st->fetchAll();
+    } else {
+      $subRows = $dbh->query("SELECT * FROM subcategories WHERE active=1 ORDER BY category_id, name")->fetchAll();
+    }
     $subsByCat=[]; foreach ($subRows as $r) $subsByCat[$r['category_id']][]=$r;
-    $pms = $dbh->query("SELECT * FROM payment_methods WHERE active=1 ORDER BY id")->fetchAll();
+    if ($this->hasColumn($dbh,'payment_methods','tenant_id')) {
+      $st = $dbh->prepare("SELECT * FROM payment_methods WHERE active=1 AND tenant_id=? ORDER BY id");
+      $st->execute([$this->tenantId()]);
+      $pms = $st->fetchAll();
+    } else {
+      $pms = $dbh->query("SELECT * FROM payment_methods WHERE active=1 ORDER BY id")->fetchAll();
+    }
 
     $st = $dbh->prepare("SELECT t.* FROM tags t INNER JOIN expense_tags et ON et.tag_id=t.id WHERE et.expense_id=? ORDER BY t.name");
     $st->execute([$id]); $rowTags=$st->fetchAll();
@@ -215,7 +270,7 @@ class essentials extends Controller {
     if ($iDate===false || $iAmt===false || $iCat===false) { $_SESSION['flash_error']='CSV needs date, amount, category'; header('Location:/essentials/import'); exit; }
 
     // category name -> id cache
-    $catMap = $this->categoryNameMap($dbh);
+    $catMap = $this->categoryNameMap($dbh, $tenantId);
 
     $total=0; $ok=0; $skip=0;
     while (($row=fgetcsv($fh))!==false) {
@@ -238,14 +293,26 @@ class essentials extends Controller {
 
       $subId = null;
       if ($subName !== '') {
-        $st = $dbh->prepare("SELECT id FROM subcategories WHERE category_id=? AND LOWER(name)=LOWER(?) LIMIT 1");
-        $st->execute([$catId,$subName]); $s=$st->fetch(); $subId=$s ? (int)$s['id'] : null;
+        if ($this->hasColumn($dbh,'subcategories','tenant_id')) {
+          $st = $dbh->prepare("SELECT id FROM subcategories WHERE tenant_id=? AND category_id=? AND LOWER(name)=LOWER(?) LIMIT 1");
+          $st->execute([$tenantId,$catId,$subName]); $s=$st->fetch(); $subId=$s ? (int)$s['id'] : null;
+        } else {
+          $st = $dbh->prepare("SELECT id FROM subcategories WHERE category_id=? AND LOWER(name)=LOWER(?) LIMIT 1");
+          $st->execute([$catId,$subName]); $s=$st->fetch(); $subId=$s ? (int)$s['id'] : null;
+        }
       }
 
       $pmId = null;
       if ($pmName !== '') {
-        $m = ['cash'=>1,'debit'=>2,'credit'=>3,'e-transfer'=>4,'etransfer'=>4,'transfer'=>4,'other'=>5];
-        $pmId = $m[strtolower($pmName)] ?? null;
+        if ($this->hasColumn($dbh,'payment_methods','tenant_id')) {
+          $st = $dbh->prepare("SELECT id FROM payment_methods WHERE tenant_id=? AND LOWER(name)=LOWER(?) LIMIT 1");
+          $st->execute([$tenantId, strtolower($pmName)]);
+          $row = $st->fetch();
+          $pmId = $row ? (int)$row['id'] : null;
+        } else {
+          $m = ['cash'=>1,'debit'=>2,'credit'=>3,'e-transfer'=>4,'etransfer'=>4,'transfer'=>4,'other'=>5];
+          $pmId = $m[strtolower($pmName)] ?? null;
+        }
       }
 
       $st = $dbh->prepare("INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,created_at,updated_at)
@@ -351,15 +418,35 @@ class essentials extends Controller {
       $q->execute();
     }
   }
-  private function categoryNameMap(PDO $dbh): array {
-    $rows = $dbh->query("SELECT id, name FROM categories")->fetchAll();
+  private function categoryNameMap(PDO $dbh, int $tenantId): array {
+    if ($this->hasColumn($dbh,'categories','tenant_id')) {
+      $st = $dbh->prepare("SELECT id, name FROM categories WHERE tenant_id=?");
+      $st->execute([$tenantId]);
+      $rows = $st->fetchAll();
+    } else {
+      $rows = $dbh->query("SELECT id, name FROM categories")->fetchAll();
+    }
     $map = [];
     foreach ($rows as $r) $map[strtolower($r['name'])]=(int)$r['id'];
-    // synonyms
-    $map['transport']=1; $map['transportation']=1;
-    $map['accommodation']=2; $map['housing']=2; $map['rent']=2;
-    $map['travel']=3; $map['entertainment']=3; $map['travel & entertainment']=3; $map['travel&ent']=3;
-    $map['health']=4; $map['medical']=4;
+    // synonyms map to the same category id by name when present
+    $aliasToName = [
+      'transport' => 'transportation',
+      'transportation' => 'transportation',
+      'accommodation' => 'accommodation',
+      'housing' => 'accommodation',
+      'rent' => 'accommodation',
+      'travel' => 'travel & entertainment',
+      'entertainment' => 'travel & entertainment',
+      'travel & entertainment' => 'travel & entertainment',
+      'travel&ent' => 'travel & entertainment',
+      'health' => 'health',
+      'medical' => 'health',
+    ];
+    foreach ($aliasToName as $alias => $canonical) {
+      if (isset($map[$canonical])) {
+        $map[$alias] = $map[$canonical];
+      }
+    }
     return $map;
   }
 }
