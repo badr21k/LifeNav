@@ -7,28 +7,7 @@
     <title>Earnings — LifeNav</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary: #2c6b5f;
-            --primary-dark: #1f4b43;
-            --primary-light: #e6f0ee;
-            --secondary: #5c6b7a;
-            --accent: #d97706;
-            --background: #f9fafb;
-            --card: #ffffff;
-            --text: #111827;
-            --text-light: #6b7280;
-            --border: #d1d5db;
-            --success: #059669;
-            --warning: #d97706;
-            --danger: #dc2626;
-            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --radius-sm: 0.5rem;
-            --radius-md: 0.75rem;
-            --radius-lg: 1rem;
-            --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        }
+        /* Inherit global tokens from header; no local :root overrides here. */
 
         /* Dark mode is managed globally via header template. */
 
@@ -221,24 +200,7 @@
             align-items: center;
         }
 
-        .theme-toggle {
-            background: transparent;
-            border: 1px solid var(--border);
-            width: 3rem;
-            height: 3rem;
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--text);
-            transition: var(--transition);
-        }
-
-        .theme-toggle:hover {
-            background: var(--primary-light);
-            transform: scale(1.05);
-        }
+        /* Theme toggle handled globally in header. */
 
         .currency-selector-wrapper {
             position: relative;
@@ -1105,9 +1067,6 @@
                 <div class="logo-text">Finance Hub</div>
             </div>
             <div class="controls">
-                <button class="theme-toggle" id="theme-toggle">
-                    <i class="fas fa-moon"></i>
-                </button>
                 <div class="currency-selector-wrapper">
                     <input id="currency-search" class="currency-typeahead" placeholder="Search currency (code or name)…" aria-label="Search currency" autocomplete="off" />
                     <div id="currency-dropdown" class="currency-dropdown" role="listbox" aria-label="Currencies"></div>
@@ -1508,7 +1467,6 @@
         };
 
         // DOM Elements
-        const themeToggle = document.getElementById('theme-toggle');
         const baseCurrencySelector = document.getElementById('base-currency-selector');
         const currencySearch = document.getElementById('currency-search');
         const currencyDropdown = document.getElementById('currency-dropdown');
@@ -1543,7 +1501,7 @@
         // Initialize the application
         async function initApp() {
             loadCurrencies();
-            loadTheme();
+            // theme handled globally
             setupEventListeners();
             await loadData();
             updateUI();
@@ -1551,8 +1509,7 @@
 
         // Set up event listeners
         function setupEventListeners() {
-            // Theme toggle
-            themeToggle.addEventListener('click', toggleTheme);
+            // Theme is handled globally; no page-scoped toggle here.
             
             // Currency selector
             baseCurrencySelector.addEventListener('change', async (e) => {
@@ -1645,29 +1602,7 @@
             }
         }
 
-        // Theme management
-        function loadTheme() {
-            const savedTheme = localStorage.getItem('financeHubTheme') || 'light';
-            financeData.theme = savedTheme;
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            updateThemeIcon();
-        }
-
-        function toggleTheme() {
-            financeData.theme = financeData.theme === 'light' ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', financeData.theme);
-            localStorage.setItem('financeHubTheme', financeData.theme);
-            updateThemeIcon();
-        }
-
-        function updateThemeIcon() {
-            const icon = themeToggle.querySelector('i');
-            if (financeData.theme === 'dark') {
-                icon.className = 'fas fa-sun';
-            } else {
-                icon.className = 'fas fa-moon';
-            }
-        }
+        // Theme is managed globally in header (toggleTheme) with localStorage and prefers-color-scheme.
 
         // Tab management
         function switchTab(tabName) {
