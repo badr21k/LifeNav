@@ -41,8 +41,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --text:#f3f4f6; --text-light:#d1d5db; --card:#0f172a; --background:#0b1220; --border:#1f2a44;
         --shadow-sm:0 2px 4px rgba(0,0,0,.4); --shadow-md:0 10px 20px rgba(0,0,0,.5);
       }
-      .navbar.navbar-modern{ position: sticky; top:0; z-index: 3000; min-height: var(--header-h); display:flex; align-items:center; backdrop-filter:saturate(1.2) blur(10px); background:linear-gradient(180deg, rgba(255,255,255,.90), rgba(255,255,255,.75)) !important; border-bottom:1px solid var(--border); box-shadow: var(--shadow-sm); }
-      [data-theme="dark"] .navbar.navbar-modern{ background:linear-gradient(180deg, rgba(17,24,39,.7), rgba(15,23,42,.6)) !important; }
+      .navbar.navbar-modern{ position: sticky; top:0; z-index: 3000; min-height: var(--header-h); display:flex; align-items:center; backdrop-filter:saturate(1.2) blur(10px); background: var(--card) !important; border-bottom:1px solid var(--border); box-shadow: var(--shadow-sm); }
+      [data-theme="dark"] .navbar.navbar-modern{ background: var(--card) !important; box-shadow: var(--shadow-md); }
       .navbar .navbar-brand{ display:flex; align-items:center; gap:.6rem; font-weight:900; letter-spacing:-.02em; color:var(--text); }
       .navbar .brand-icon{ width:32px; height:32px; border-radius:10px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; box-shadow:0 2px 8px rgba(44,107,95,.25); }
       .navbar .nav-link{ font-weight:800; color:var(--text-light); padding:.7rem 1.1rem; font-size:1rem; }
@@ -55,7 +55,15 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       .user-chip{ display:flex; align-items:center; gap:.5rem; font-weight:700; }
       .user-chip i{ opacity:.9; }
       .dropdown-menu{ z-index: 4000; box-shadow: var(--shadow-md); border:1px solid var(--border); background:var(--card); }
+      .navbar .collapse{ overflow: visible; }
       body{ background:var(--background); color:var(--text); font-family: var(--font-sans); padding-top: var(--header-h); }
+      a{ color: var(--text); text-decoration: none; transition: var(--transition); }
+      a:hover{ color: var(--primary); }
+      label, .form-label, th{ color: var(--text); }
+      .dropdown-item{ color: var(--text); }
+      .dropdown-item:hover, .dropdown-item:focus{ background: var(--primary-light); color: var(--text); }
+      .btn, .btn-outline-secondary{ color: var(--text); border-color: var(--border); }
+      .btn:hover, .btn:focus{ filter: brightness(0.98); }
       .footer{ background:transparent; color:var(--text-light); border-top:1px solid var(--border); padding:1rem; text-align:center; }
       /* Precise centering for header tabs on large screens */
       @media (min-width: 992px) {
@@ -99,6 +107,33 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             if (!navEl.classList.contains('show')) return;
             if (!e.target.closest('.navbar')) { try { bsCollapse && bsCollapse.hide(); } catch(_) {} }
           });
+
+          // Dropdown accessibility and close behavior for user menus (desktop + mobile)
+          function wireDropdown(triggerId, menuId){
+            var trigger = document.getElementById(triggerId);
+            var menu = document.getElementById(menuId);
+            if (!trigger || !menu) return;
+            var bsDrop = null; try { bsDrop = bootstrap && bootstrap.Dropdown ? new bootstrap.Dropdown(trigger, { autoClose: true }) : null; } catch(_) {}
+
+            function focusFirstItem(){
+              var first = menu.querySelector('.dropdown-item, a[role="menuitem"], button[role="menuitem"]');
+              if (first) first.focus({ preventScroll: true });
+            }
+            trigger.addEventListener('shown.bs.dropdown', function(){
+              trigger.setAttribute('aria-expanded','true');
+              focusFirstItem();
+            });
+            trigger.addEventListener('hidden.bs.dropdown', function(){
+              trigger.setAttribute('aria-expanded','false');
+              trigger.focus({ preventScroll: true });
+            });
+            // Close on escape manually (Bootstrap handles, but ensure)
+            menu.addEventListener('keydown', function(e){ if(e.key==='Escape'){ try{ bsDrop && bsDrop.hide(); }catch(_){} } });
+            // Close after selecting an item
+            menu.addEventListener('click', function(e){ if(e.target.closest('.dropdown-item')){ try{ bsDrop && bsDrop.hide(); }catch(_){} } });
+          }
+          wireDropdown('userMenu','userMenuMenu');
+          wireDropdown('userMenuMobile','userMenuMobileMenu');
         });
       })();
     </script>
@@ -129,16 +164,29 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         <li class="nav-item">
           <a class="nav-link<?= $active('finance') ?>" href="/finance"><i class="fa-solid fa-sack-dollar"></i> Earnings</a>
         </li>
+        
+        <!-- Mobile user menu inside collapse -->
+        <li class="nav-item dropdown d-lg-none mt-2">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle user-chip" type="button" id="userMenuMobile" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="userMenuMobileMenu">
+            <i class="fa-solid fa-user"></i>
+            <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
+          </button>
+          <ul id="userMenuMobileMenu" class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuMobile" role="menu">
+            <li><button class="dropdown-item" type="button" role="menuitem" onclick="toggleTheme()"><i class="fa-solid fa-moon me-2"></i>Toggle Dark Mode</button></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="/logout" role="menuitem"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
+          </ul>
+        </li>
     </div>
 
     <!-- Right (User menu) -->
     <div class="d-none d-lg-flex align-items-center justify-content-end">
       <div class="dropdown">
-        <button class="btn btn-outline-secondary btn-sm dropdown-toggle user-chip" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle user-chip" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="userMenuMenu">
           <i class="fa-solid fa-user"></i>
           <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+        <ul id="userMenuMenu" class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu" role="menu">
           <li><button class="dropdown-item" type="button" onclick="toggleTheme()"><i class="fa-solid fa-moon me-2"></i>Toggle Dark Mode</button></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item text-danger" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
