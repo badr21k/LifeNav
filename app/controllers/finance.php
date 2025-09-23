@@ -457,7 +457,10 @@ class Finance extends Controller {
             case 'PUT':
             case 'PATCH':
                 if(!$id) return $this->json(['error'=>'ID required'],400); $b=$this->bodyJson(); $fields=[]; $vals=[];
-                foreach(['lender','type','balance','limit','apr','min_payment','due_day'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
+                foreach(['lender','type','balance','apr','min_payment','due_day'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
+                // handle limit via either `limit` or `limit_amount` payload key
+                if (isset($b['limit'])) { $fields[]='`limit`=?'; $vals[]=$b['limit']; }
+                elseif (isset($b['limit_amount'])) { $fields[]='`limit`=?'; $vals[]=$b['limit_amount']; }
                 if(!$fields) return $this->json(['error'=>'No fields'],400); $vals[]=$tenantId; $vals[]=(int)$id; $sql='UPDATE debts SET '.implode(',', $fields).' WHERE tenant_id=? AND id=?'; $dbh->prepare($sql)->execute($vals); return $this->json(['ok'=>true]);
             case 'DELETE':
                 if(!$id) return $this->json(['error'=>'ID required'],400); $dbh->prepare('DELETE FROM debts WHERE tenant_id=? AND id=?')->execute([$tenantId,(int)$id]); return $this->json(['ok'=>true]);

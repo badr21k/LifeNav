@@ -2510,240 +2510,79 @@
             const tips = parseFloat(document.getElementById('shift-tips').value) || 0;
             const location = document.getElementById('shift-location').value || '';
             const notes = document.getElementById('shift-notes').value || '';
-            
+
             // Calculate hours based on start/end times and break
-            let hours = 0;
             if (startTime && endTime) {
                 const [startHours, startMins] = startTime.split(':').map(Number);
                 const [endHours, endMins] = endTime.split(':').map(Number);
-                
                 let startTotalMinutes = startHours * 60 + startMins;
                 let endTotalMinutes = endHours * 60 + endMins;
-                
-                // Handle overnight shifts
-                if (endTotalMinutes < startTotalMinutes) {
-                    endTotalMinutes += 24 * 60;
-                }
+                if (endTotalMinutes < startTotalMinutes) endTotalMinutes += 24 * 60;
             }
 
-            // Helper functions
-            function formatDate(dateString) {
-                const date = new Date(dateString);
-                return date.toLocaleDateString();
-            }
+            const payload = { date, start_time: startTime, end_time: endTime, break_minutes: breakMinutes, employer_id: employerId?parseInt(employerId,10):null, role, rate, tips, location, notes };
+            if (id) await apiSend('PUT', `/finance/api/shifts/${encodeURIComponent(id)}`, payload);
+            else await apiSend('POST', '/finance/api/shifts', payload);
+            await loadData(); updateUI();
+        }
 
-            function formatDebtType(type) {
-                const types = {
-                    'credit-card': 'Credit Card',
-                    'mortgage': 'Mortgage',
-                    'student-loan': 'Student Loan',
-                    'car-loan': 'Car Loan',
-                    'personal-loan': 'Personal Loan',
-                    'other': 'Other'
-                };
-                return types[type] || type;
-            }
+        async function deleteShift(id) {
+            await apiSend('DELETE', `/finance/api/shifts/${encodeURIComponent(id)}`);
+            await loadData(); updateUI();
+        }
 
-            function formatAccountType(type) {
-                const types = {
-                    'brokerage': 'Brokerage',
-                    'ira': 'IRA',
-                    'roth-ira': 'Roth IRA',
-                    '401k': '401(k)',
-                    'hsa': 'HSA',
-                    'other': 'Other'
-                };
-                return types[type] || type;
-            }
+        async function saveDebt(id) {
+            const lender = document.getElementById('debt-lender').value;
+            let type = document.getElementById('debt-type').value;
+            const balance = parseFloat(document.getElementById('debt-balance').value);
+            const limit = parseFloat(document.getElementById('debt-limit').value);
+            const apr = parseFloat(document.getElementById('debt-apr').value);
+            const minPayment = parseFloat(document.getElementById('debt-min-payment').value);
+            const dueDate = parseInt(document.getElementById('debt-due-date').value);
+            if (type === 'other') { const customType = document.getElementById('debt-custom-type').value.trim(); type = customType || 'other'; }
+            const payload = { lender, type, balance, limit_amount: limit, apr, min_payment: minPayment, due_day: dueDate };
+            if (id) await apiSend('PUT', `/finance/api/debts/${encodeURIComponent(id)}`, payload);
+            else await apiSend('POST', '/finance/api/debts', payload);
+            await loadData(); updateUI();
+        }
 
-            // Data management functions
-            async function saveEmployer(id) {
-                const name = document.getElementById('employer-name').value;
-                const paySchedule = document.getElementById('pay-schedule').value;
-                const baseRate = parseFloat(document.getElementById('base-rate').value);
-                const payload = { name, pay_schedule: paySchedule, base_rate: baseRate };
-                if (id) await apiSend('PUT', `/finance/api/employers/${encodeURIComponent(id)}`, payload);
-                else await apiSend('POST', '/finance/api/employers', payload);
-                await loadData(); updateUI();
-            }
+        async function deleteDebt(id) {
+            await apiSend('DELETE', `/finance/api/debts/${encodeURIComponent(id)}`);
+            await loadData(); updateUI();
+        }
 
-            async function deleteEmployer(id) {
-                await apiSend('DELETE', `/finance/api/employers/${encodeURIComponent(id)}`);
-                await loadData(); updateUI();
-            }
+        async function saveInvestmentAccount(id) {
+            const name = document.getElementById('account-name').value;
+            let type = document.getElementById('account-type').value;
+            const value = parseFloat(document.getElementById('account-value').value);
+            if (type === 'other') { const customType = document.getElementById('account-custom-type').value.trim(); type = customType || 'other'; }
+            const payload = { name, type, value };
+            if (id) await apiSend('PUT', `/finance/api/investment_accounts/${encodeURIComponent(id)}`, payload);
+            else await apiSend('POST', '/finance/api/investment_accounts', payload);
+            await loadData(); updateUI();
+        }
 
-            async function savePayRun(id) {
-                const employerId = document.getElementById('payrun-employer').value;
-                const periodStart = document.getElementById('payrun-period-start').value;
-                const periodEnd = document.getElementById('payrun-period-end').value;
-                const grossPay = parseFloat(document.getElementById('payrun-gross').value);
-                const netPay = parseFloat(document.getElementById('payrun-net').value);
-                const payload = { employer_id: parseInt(employerId,10), period_start: periodStart, period_end: periodEnd, gross_cents: Math.round((grossPay||0)*100), net_cents: Math.round((netPay||0)*100) };
-                if (id) await apiSend('PUT', `/finance/api/payruns/${encodeURIComponent(id)}`, payload);
-                else await apiSend('POST', '/finance/api/payruns', payload);
-                await loadData(); updateUI();
-            }
+        async function deleteInvestmentAccount(id) {
+            await apiSend('DELETE', `/finance/api/investment_accounts/${encodeURIComponent(id)}`);
+            await loadData(); updateUI();
+        }
 
-            async function deletePayRun(id) {
-                await apiSend('DELETE', `/finance/api/payruns/${encodeURIComponent(id)}`);
-                await loadData(); updateUI();
-            }
+        async function saveInvestment(id) {
+            const accountId = document.getElementById('investment-account').value;
+            const name = document.getElementById('investment-name').value;
+            const symbol = document.getElementById('investment-symbol').value;
+            const quantity = parseFloat(document.getElementById('investment-quantity').value);
+            const price = parseFloat(document.getElementById('investment-price').value);
+            const payload = { account_id: parseInt(accountId,10), name, symbol, quantity, price };
+            if (id) await apiSend('PUT', `/finance/api/investments/${encodeURIComponent(id)}`, payload);
+            else await apiSend('POST', '/finance/api/investments', payload);
+            await loadData(); updateUI();
+        }
 
-            async function saveShift(id) {
-                const date = document.getElementById('shift-date').value;
-                const startTime = document.getElementById('shift-start-time').value;
-                const endTime = document.getElementById('shift-end-time').value;
-                const breakMinutes = parseInt(document.getElementById('shift-break').value) || 0;
-                const employerId = document.getElementById('shift-employer').value || null;
-                const role = document.getElementById('shift-role').value || '';
-                const rate = parseFloat(document.getElementById('shift-rate').value);
-                const tips = parseFloat(document.getElementById('shift-tips').value) || 0;
-                const location = document.getElementById('shift-location').value || '';
-                const notes = document.getElementById('shift-notes').value || '';
-                
-                // Calculate hours based on start/end times and break
-                let hours = 0;
-                if (startTime && endTime) {
-                    const [startHours, startMins] = startTime.split(':').map(Number);
-                    const [endHours, endMins] = endTime.split(':').map(Number);
-                    
-                    let startTotalMinutes = startHours * 60 + startMins;
-                    let endTotalMinutes = endHours * 60 + endMins;
-                    
-                    // Handle overnight shifts
-                    if (endTotalMinutes < startTotalMinutes) {
-                        endTotalMinutes += 24 * 60;
-                    }
-                    
-                    hours = (endTotalMinutes - startTotalMinutes - breakMinutes) / 60;
-                    hours = Math.max(0, hours); // Ensure non-negative
-                }
-                
-                const payload = { date, start_time: startTime, end_time: endTime, break_minutes: breakMinutes, employer_id: employerId?parseInt(employerId,10):null, role, rate, tips, location, notes };
-                if (id) await apiSend('PUT', `/finance/api/shifts/${encodeURIComponent(id)}`, payload);
-                else await apiSend('POST', '/finance/api/shifts', payload);
-                await loadData(); updateUI();
-            }
-
-            async function deleteShift(id) {
-                await apiSend('DELETE', `/finance/api/shifts/${encodeURIComponent(id)}`);
-                await loadData(); updateUI();
-            }
-
-            async function saveDebt(id) {
-                const lender = document.getElementById('debt-lender').value;
-                let type = document.getElementById('debt-type').value;
-                const balance = parseFloat(document.getElementById('debt-balance').value);
-                const limit = parseFloat(document.getElementById('debt-limit').value);
-                const apr = parseFloat(document.getElementById('debt-apr').value);
-                const minPayment = parseFloat(document.getElementById('debt-min-payment').value);
-                const dueDate = parseInt(document.getElementById('debt-due-date').value);
-                
-                // Handle custom type
-                if (type === 'other') {
-                    const customType = document.getElementById('debt-custom-type').value.trim();
-                    type = customType || 'other';
-                }
-                
-                const payload = { lender, type, balance, limit_amount: limit, apr, min_payment: minPayment, due_day: dueDate };
-                if (id) await apiSend('PUT', `/finance/api/debts/${encodeURIComponent(id)}`, payload);
-                else await apiSend('POST', '/finance/api/debts', payload);
-                await loadData(); updateUI();
-            }
-
-            async function deleteDebt(id) {
-                await apiSend('DELETE', `/finance/api/debts/${encodeURIComponent(id)}`);
-                await loadData(); updateUI();
-            }
-
-            async function saveInvestmentAccount(id) {
-                const name = document.getElementById('account-name').value;
-                let type = document.getElementById('account-type').value;
-                const value = parseFloat(document.getElementById('account-value').value);
-                
-                // Handle custom type
-                if (type === 'other') {
-                    const customType = document.getElementById('account-custom-type').value.trim();
-                    type = customType || 'other';
-                }
-                
-                const payload = { name, type, value };
-                if (id) await apiSend('PUT', `/finance/api/investment_accounts/${encodeURIComponent(id)}`, payload);
-                else await apiSend('POST', '/finance/api/investment_accounts', payload);
-                await loadData(); updateUI();
-            }
-
-            async function deleteInvestmentAccount(id) {
-                await apiSend('DELETE', `/finance/api/investment_accounts/${encodeURIComponent(id)}`);
-                await loadData(); updateUI();
-            }
-
-            async function saveInvestment(id) {
-                const accountId = document.getElementById('investment-account').value;
-                const name = document.getElementById('investment-name').value;
-                const symbol = document.getElementById('investment-symbol').value;
-                const quantity = parseFloat(document.getElementById('investment-quantity').value);
-                const price = parseFloat(document.getElementById('investment-price').value);
-                const payload = { account_id: parseInt(accountId,10), name, symbol, quantity, price };
-                if (id) await apiSend('PUT', `/finance/api/investments/${encodeURIComponent(id)}`, payload);
-                else await apiSend('POST', '/finance/api/investments', payload);
-                await loadData(); updateUI();
-            }
-
-            async function deleteInvestment(id) {
-                await apiSend('DELETE', `/finance/api/investments/${encodeURIComponent(id)}`);
-                await loadData(); updateUI();
-            }
-
-            async function saveSavingsGoal(id) {
-                const name = document.getElementById('savings-goal').value;
-                const target = parseFloat(document.getElementById('savings-target').value);
-                const saved = parseFloat(document.getElementById('savings-saved').value);
-                const deadline = document.getElementById('savings-deadline').value;
-                const payload = { name, target_cents: Math.round((target||0)*100), saved_cents: Math.round((saved||0)*100), deadline: deadline||null, currency: financeData.currency };
-                if (id) await apiSend('PUT', `/finance/api/savings_goals/${encodeURIComponent(id)}`, payload);
-                else await apiSend('POST', '/finance/api/savings_goals', payload);
-                await loadData(); updateUI();
-            }
-
-            async function deleteSavingsGoal(id) {
-                await apiSend('DELETE', `/finance/api/savings_goals/${encodeURIComponent(id)}`);
-                await loadData(); updateUI();
-            }
-
-            // Initialize the app when the DOM is loaded
-            document.addEventListener('DOMContentLoaded', async () => {
-                await initApp();
-                await loadData();
-                updateUI();
-            });
-
-            async function initApp() {
-                // Initialize CSRF token
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-                apiSend = async (method, url, data) => {
-                    const headers = {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    };
-                    const response = await fetch(url, { method, headers, body: JSON.stringify(data) });
-                    return response.json();
-                };
-            }
-
-            async function loadData() {
-                const response = await fetch('/finance/api/init');
-                const data = await response.json();
-                financeData = data;
-            }
-        </script>
-    </body>
-
-    <div style="position: fixed; bottom: 0; left: 0; right: 0; background-color: #f0f0f0; padding: 10px; text-align: center; border-top: 1px solid #ddd;">
-        <small>Data source: <a href="https://example.com" target="_blank">https://example.com</a></small>
-    </div>
-
-    <?php require 'app/views/templates/footer.php'; ?>
+        async function deleteInvestment(id) {
+            await apiSend('DELETE', `/finance/api/investments/${encodeURIComponent(id)}`);
+            await loadData(); updateUI();
+        }
 
         async function saveSavingsGoal(id) {
             const name = document.getElementById('savings-goal').value;
@@ -2765,6 +2604,5 @@
         document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
-
 
 <?php require 'app/views/templates/footer.php'; ?>
