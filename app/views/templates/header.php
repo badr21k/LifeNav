@@ -47,8 +47,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       .navbar .navbar-collapse{ display:flex; align-items:center; }
       .navbar .navbar-nav{ flex:1 1 auto; justify-content:center; gap:1.25rem; }
       .navbar .navbar-text{ color:var(--text); font-weight:700; }
-      .theme-toggle{ border:1px solid var(--border); background:var(--card); color:var(--text); width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-right:.5rem; box-shadow:var(--shadow-sm); }
-      .theme-toggle:hover{ background:var(--primary-light); }
+      .user-chip{ display:flex; align-items:center; gap:.5rem; font-weight:700; }
+      .user-chip i{ opacity:.9; }
       body{ background:var(--background); color:var(--text); }
       .footer{ background:transparent; color:var(--text-light); border-top:1px solid var(--border); padding:1rem; text-align:center; }
     </style>
@@ -93,14 +93,18 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         </li>
 
       <!-- Right -->
-      <div class="d-flex align-items-center">
-        <button class="theme-toggle" type="button" onclick="toggleTheme()" title="Toggle theme">
-          <i class="fa-solid fa-moon"></i>
-        </button>
-        <span class="navbar-text me-2">
-          <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
-        </span>
-        <a class="btn btn-outline-secondary btn-sm" href="/logout">Logout</a>
+      <div class="ms-auto d-flex align-items-center">
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle user-chip" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-user"></i>
+            <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+            <li><button class="dropdown-item" type="button" onclick="toggleTheme()"><i class="fa-solid fa-moon me-2"></i>Toggle Dark Mode</button></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
