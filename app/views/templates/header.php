@@ -100,7 +100,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           if (toggler){ toggler.classList.add('collapsed'); toggler.setAttribute('aria-expanded','false'); }
           // Use Bootstrap Collapse API if available
           var bsCollapse = null;
-          try { bsCollapse = (window.bootstrap && bootstrap.Collapse) ? new bootstrap.Collapse(navEl, { toggle: false }) : null; } catch(_) {}
+          try { bsCollapse = (window.bootstrap && bootstrap.Collapse) ? bootstrap.Collapse.getOrCreateInstance(navEl, { toggle: false }) : null; } catch(_) {}
           var isClosing = false; var closingTimer = null;
           var togglerHadDataAttr = false;
           function beginClosingDebounce(){
@@ -183,35 +183,16 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             });
           }catch(_){ }
 
-          // Dropdown accessibility and close behavior for user menus (desktop + mobile)
-          function wireDropdown(triggerId, menuId){
-            var trigger = document.getElementById(triggerId);
-            var menu = document.getElementById(menuId);
-            if (!trigger || !menu) return;
-            var bsDrop = null; try { bsDrop = (window.bootstrap && bootstrap.Dropdown) ? new bootstrap.Dropdown(trigger, { autoClose: true }) : null; } catch(_) {}
-
-            function focusFirstItem(){
-              var first = menu.querySelector('.dropdown-item, a[role="menuitem"], button[role="menuitem"]');
-              if (first) first.focus({ preventScroll: true });
+          // In case Bootstrap loads after DOMContentLoaded, re-initialize on window load
+          window.addEventListener('load', function(){
+            try { bsCollapse = (window.bootstrap && bootstrap.Collapse) ? bootstrap.Collapse.getOrCreateInstance(navEl, { toggle: false }) : bsCollapse; } catch(_) {}
+            // If menu is open at load, hide it to avoid stuck state
+            if (navEl.classList.contains('show')) {
+              try { bsCollapse && bsCollapse.hide(); } catch(_) {}
+              navEl.classList.remove('show');
+              if (toggler){ toggler.setAttribute('aria-expanded','false'); toggler.classList.add('collapsed'); }
             }
-            trigger.addEventListener('shown.bs.dropdown', function(){
-              trigger.setAttribute('aria-expanded','true');
-              focusFirstItem();
-            });
-            trigger.addEventListener('hidden.bs.dropdown', function(){
-              trigger.setAttribute('aria-expanded','false');
-              trigger.focus({ preventScroll: true });
-            });
-            // Close on escape manually (Bootstrap handles, but ensure)
-            menu.addEventListener('keydown', function(e){ if(e.key==='Escape'){ try{ bsDrop && bsDrop.hide(); }catch(_){} } });
-            // Close after selecting an item and also close the collapsed navbar (mobile)
-            menu.addEventListener('click', function(e){
-              if(e.target.closest('.dropdown-item')){
-                try{ bsDrop && bsDrop.hide(); }catch(_){}
-                closeMenu();
-              }
-            });
-          }
+          });
           wireDropdown('userMenu','userMenuMenu');
           wireDropdown('userMenuMobile','userMenuMobileMenu');
         });
