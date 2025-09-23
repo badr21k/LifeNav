@@ -251,7 +251,25 @@ class Finance extends Controller {
             case 'transfers':
                 return $this->transfers($dbh, $tenantId, $method, $id);
 
-            // TODO: budgets, budget_lines, income, transfers, reports
+            case 'employers':
+                return $this->employers($dbh, $tenantId, $method, $id);
+
+            case 'payruns':
+                return $this->payruns($dbh, $tenantId, $method, $id);
+
+            case 'shifts':
+                return $this->shifts($dbh, $tenantId, $method, $id);
+
+            case 'debts':
+                return $this->debts($dbh, $tenantId, $method, $id);
+
+            case 'investment_accounts':
+                return $this->investmentAccounts($dbh, $tenantId, $method, $id);
+
+            case 'investments':
+                return $this->investments($dbh, $tenantId, $method, $id);
+
+            // TODO: reports
             }
             return $this->json(['error'=>'Not found'],404);
         } catch (Throwable $e) {
@@ -318,10 +336,177 @@ class Finance extends Controller {
         $st->execute([$tenantId]);
         $transfers=$st->fetchAll();
 
+        // employers
+        $st=$dbh->prepare('SELECT * FROM employers WHERE tenant_id=? ORDER BY id DESC LIMIT 200');
+        $st->execute([$tenantId]);
+        $employers=$st->fetchAll();
+
+        // pay runs
+        $st=$dbh->prepare('SELECT * FROM pay_runs WHERE tenant_id=? ORDER BY period_end DESC, id DESC LIMIT 300');
+        $st->execute([$tenantId]);
+        $payruns=$st->fetchAll();
+
+        // shifts
+        $st=$dbh->prepare('SELECT * FROM shifts WHERE tenant_id=? ORDER BY date DESC, id DESC LIMIT 500');
+        $st->execute([$tenantId]);
+        $shifts=$st->fetchAll();
+
+        // debts
+        $st=$dbh->prepare('SELECT * FROM debts WHERE tenant_id=? ORDER BY id DESC LIMIT 200');
+        $st->execute([$tenantId]);
+        $debts=$st->fetchAll();
+
+        // investment accounts
+        $st=$dbh->prepare('SELECT * FROM investment_accounts WHERE tenant_id=? ORDER BY id DESC LIMIT 200');
+        $st->execute([$tenantId]);
+        $investment_accounts=$st->fetchAll();
+
+        // investments
+        $st=$dbh->prepare('SELECT * FROM investments WHERE tenant_id=? ORDER BY id DESC LIMIT 500');
+        $st->execute([$tenantId]);
+        $investments=$st->fetchAll();
+
         // default currency: pick first account currency or CAD
         $defaultCurrency = $accounts[0]['currency'] ?? 'CAD';
 
-        return compact('categories','subcategories','payment_methods','accounts','goals','budgets','income','transfers','defaultCurrency');
+        return compact('categories','subcategories','payment_methods','accounts','goals','budgets','income','transfers','employers','payruns','shifts','debts','investment_accounts','investments','defaultCurrency');
+    }
+
+    /* ---------------- Employers ---------------- */
+    private function employers(PDO $dbh, int $tenantId, string $method, $id) {
+        switch ($method) {
+            case 'GET':
+                if ($id) { $st=$dbh->prepare('SELECT * FROM employers WHERE tenant_id=? AND id=?'); $st->execute([$tenantId,(int)$id]); $row=$st->fetch(); return $this->json($row?:['error'=>'Not found'],$row?200:404);}                
+                $st=$dbh->prepare('SELECT * FROM employers WHERE tenant_id=? ORDER BY id DESC'); $st->execute([$tenantId]); return $this->json($st->fetchAll());
+            case 'POST':
+                $b=$this->bodyJson(); $name=mb_substr(trim($b['name']??''),0,120); $schedule=mb_substr(trim($b['pay_schedule']??'weekly'),0,40); $base=(float)($b['base_rate']??0);
+                if($name==='') return $this->json(['error'=>'Name required'],422);
+                $st=$dbh->prepare('INSERT INTO employers (tenant_id,name,pay_schedule,base_rate) VALUES (?,?,?,?)');
+                $st->execute([$tenantId,$name,$schedule,$base]); return $this->json(['id'=>(int)$dbh->lastInsertId()],201);
+            case 'PUT':
+            case 'PATCH':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $b=$this->bodyJson(); $fields=[]; $vals=[];
+                foreach(['name','pay_schedule'] as $k){ if(isset($b[$k])){ $fields[ ]="$k=?"; $vals[]=$b[$k]; }}
+                if(isset($b['base_rate'])){ $fields[]='base_rate=?'; $vals[]=(float)$b['base_rate']; }
+                if(!$fields) return $this->json(['error'=>'No fields'],400);
+                $vals[]=$tenantId; $vals[]=(int)$id; $sql='UPDATE employers SET '.implode(',', $fields).' WHERE tenant_id=? AND id=?'; $dbh->prepare($sql)->execute($vals); return $this->json(['ok'=>true]);
+            case 'DELETE':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $st=$dbh->prepare('DELETE FROM employers WHERE tenant_id=? AND id=?'); $st->execute([$tenantId,(int)$id]); return $this->json(['ok'=>true]);
+        }
+        return $this->json(['error'=>'Method not allowed'],405);
+    }
+
+    /* ---------------- Pay Runs ---------------- */
+    private function payruns(PDO $dbh, int $tenantId, string $method, $id) {
+        switch ($method) {
+            case 'GET':
+                if ($id) { $st=$dbh->prepare('SELECT * FROM pay_runs WHERE tenant_id=? AND id=?'); $st->execute([$tenantId,(int)$id]); $row=$st->fetch(); return $this->json($row?:['error'=>'Not found'],$row?200:404);}                
+                $st=$dbh->prepare('SELECT * FROM pay_runs WHERE tenant_id=? ORDER BY period_end DESC, id DESC'); $st->execute([$tenantId]); return $this->json($st->fetchAll());
+            case 'POST':
+                $b=$this->bodyJson(); $eid=(int)($b['employer_id']??0); $ps=$b['period_start']??null; $pe=$b['period_end']??null; $gross=(int)($b['gross_cents']??0); $net=(int)($b['net_cents']??0);
+                if($eid<=0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/',$ps??'') || !preg_match('/^\d{4}-\d{2}-\d{2}$/',$pe??'')) return $this->json(['error'=>'Invalid payload'],422);
+                $st=$dbh->prepare('INSERT INTO pay_runs (tenant_id,employer_id,period_start,period_end,gross_cents,net_cents) VALUES (?,?,?,?,?,?)');
+                $st->execute([$tenantId,$eid,$ps,$pe,$gross,$net]); return $this->json(['id'=>(int)$dbh->lastInsertId()],201);
+            case 'PUT':
+            case 'PATCH':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $b=$this->bodyJson(); $fields=[]; $vals=[];
+                foreach(['employer_id','period_start','period_end'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
+                foreach(['gross_cents','net_cents'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=(int)$b[$k]; }}
+                if(!$fields) return $this->json(['error'=>'No fields'],400); $vals[]=$tenantId; $vals[]=(int)$id; $sql='UPDATE pay_runs SET '.implode(',', $fields).' WHERE tenant_id=? AND id=?'; $dbh->prepare($sql)->execute($vals); return $this->json(['ok'=>true]);
+            case 'DELETE':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $dbh->prepare('DELETE FROM pay_runs WHERE tenant_id=? AND id=?')->execute([$tenantId,(int)$id]); return $this->json(['ok'=>true]);
+        }
+        return $this->json(['error'=>'Method not allowed'],405);
+    }
+
+    /* ---------------- Shifts ---------------- */
+    private function shifts(PDO $dbh, int $tenantId, string $method, $id) {
+        switch ($method) {
+            case 'GET':
+                if ($id) { $st=$dbh->prepare('SELECT * FROM shifts WHERE tenant_id=? AND id=?'); $st->execute([$tenantId,(int)$id]); $row=$st->fetch(); return $this->json($row?:['error'=>'Not found'],$row?200:404);}                
+                $st=$dbh->prepare('SELECT * FROM shifts WHERE tenant_id=? ORDER BY date DESC, id DESC'); $st->execute([$tenantId]); return $this->json($st->fetchAll());
+            case 'POST':
+                $b=$this->bodyJson(); $date=$b['date']??''; if(!preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)) return $this->json(['error'=>'Invalid date'],422);
+                $start=mb_substr(trim($b['start_time']??''),0,5); $end=mb_substr(trim($b['end_time']??''),0,5); $break=(int)($b['break_minutes']??0);
+                $eid = isset($b['employer_id']) && $b['employer_id']!=='' ? (int)$b['employer_id'] : null;
+                $role=mb_substr(trim($b['role']??''),0,64); $rate=(float)($b['rate']??0); $tips=(float)($b['tips']??0); $loc=mb_substr(trim($b['location']??''),0,120); $notes=mb_substr(trim($b['notes']??''),0,255);
+                $st=$dbh->prepare('INSERT INTO shifts (tenant_id,date,start_time,end_time,break_minutes,employer_id,role,rate,tips,location,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+                $st->execute([$tenantId,$date,$start,$end,$break,$eid,$role,$rate,$tips,$loc,$notes]); return $this->json(['id'=>(int)$dbh->lastInsertId()],201);
+            case 'PUT':
+            case 'PATCH':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $b=$this->bodyJson(); $fields=[]; $vals=[];
+                foreach(['date','start_time','end_time','break_minutes','employer_id','role','rate','tips','location','notes'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
+                if(!$fields) return $this->json(['error'=>'No fields'],400); $vals[]=$tenantId; $vals[]=(int)$id; $sql='UPDATE shifts SET '.implode(',', $fields).' WHERE tenant_id=? AND id=?'; $dbh->prepare($sql)->execute($vals); return $this->json(['ok'=>true]);
+            case 'DELETE':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $dbh->prepare('DELETE FROM shifts WHERE tenant_id=? AND id=?')->execute([$tenantId,(int)$id]); return $this->json(['ok'=>true]);
+        }
+        return $this->json(['error'=>'Method not allowed'],405);
+    }
+
+    /* ---------------- Debts ---------------- */
+    private function debts(PDO $dbh, int $tenantId, string $method, $id) {
+        switch ($method) {
+            case 'GET':
+                if ($id) { $st=$dbh->prepare('SELECT * FROM debts WHERE tenant_id=? AND id=?'); $st->execute([$tenantId,(int)$id]); $row=$st->fetch(); return $this->json($row?:['error'=>'Not found'],$row?200:404);}                
+                $st=$dbh->prepare('SELECT * FROM debts WHERE tenant_id=? ORDER BY id DESC'); $st->execute([$tenantId]); return $this->json($st->fetchAll());
+            case 'POST':
+                $b=$this->bodyJson(); $lender=mb_substr(trim($b['lender']??''),0,120); $type=mb_substr(trim($b['type']??'other'),0,40); $balance=(float)($b['balance']??0); $limit=(float)($b['limit_amount']??0); $apr=(float)($b['apr']??0); $min=(float)($b['min_payment']??0); $due=(int)($b['due_day']??1);
+                if($lender==='') return $this->json(['error'=>'Lender required'],422);
+                $st=$dbh->prepare('INSERT INTO debts (tenant_id,lender,type,balance,`limit`,apr,min_payment,due_day) VALUES (?,?,?,?,?,?,?,?)');
+                $st->execute([$tenantId,$lender,$type,$balance,$limit,$apr,$min,$due]); return $this->json(['id'=>(int)$dbh->lastInsertId()],201);
+            case 'PUT':
+            case 'PATCH':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $b=$this->bodyJson(); $fields=[]; $vals=[];
+                foreach(['lender','type','balance','limit','apr','min_payment','due_day'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
+                if(!$fields) return $this->json(['error'=>'No fields'],400); $vals[]=$tenantId; $vals[]=(int)$id; $sql='UPDATE debts SET '.implode(',', $fields).' WHERE tenant_id=? AND id=?'; $dbh->prepare($sql)->execute($vals); return $this->json(['ok'=>true]);
+            case 'DELETE':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $dbh->prepare('DELETE FROM debts WHERE tenant_id=? AND id=?')->execute([$tenantId,(int)$id]); return $this->json(['ok'=>true]);
+        }
+        return $this->json(['error'=>'Method not allowed'],405);
+    }
+
+    /* ---------------- Investment Accounts ---------------- */
+    private function investmentAccounts(PDO $dbh, int $tenantId, string $method, $id) {
+        switch ($method) {
+            case 'GET':
+                if ($id) { $st=$dbh->prepare('SELECT * FROM investment_accounts WHERE tenant_id=? AND id=?'); $st->execute([$tenantId,(int)$id]); $row=$st->fetch(); return $this->json($row?:['error'=>'Not found'],$row?200:404);}                
+                $st=$dbh->prepare('SELECT * FROM investment_accounts WHERE tenant_id=? ORDER BY id DESC'); $st->execute([$tenantId]); return $this->json($st->fetchAll());
+            case 'POST':
+                $b=$this->bodyJson(); $name=mb_substr(trim($b['name']??''),0,120); $type=mb_substr(trim($b['type']??'brokerage'),0,40); $value=(float)($b['value']??0);
+                if($name==='') return $this->json(['error'=>'Name required'],422);
+                $st=$dbh->prepare('INSERT INTO investment_accounts (tenant_id,name,type,value) VALUES (?,?,?,?)');
+                $st->execute([$tenantId,$name,$type,$value]); return $this->json(['id'=>(int)$dbh->lastInsertId()],201);
+            case 'PUT':
+            case 'PATCH':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $b=$this->bodyJson(); $fields=[]; $vals=[];
+                foreach(['name','type'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }} if(isset($b['value'])){ $fields[]='value=?'; $vals[]=(float)$b['value']; }
+                if(!$fields) return $this->json(['error'=>'No fields'],400); $vals[]=$tenantId; $vals[]=(int)$id; $sql='UPDATE investment_accounts SET '.implode(',', $fields).' WHERE tenant_id=? AND id=?'; $dbh->prepare($sql)->execute($vals); return $this->json(['ok'=>true]);
+            case 'DELETE':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $dbh->prepare('DELETE FROM investment_accounts WHERE tenant_id=? AND id=?')->execute([$tenantId,(int)$id]); return $this->json(['ok'=>true]);
+        }
+        return $this->json(['error'=>'Method not allowed'],405);
+    }
+
+    /* ---------------- Investments ---------------- */
+    private function investments(PDO $dbh, int $tenantId, string $method, $id) {
+        switch ($method) {
+            case 'GET':
+                if ($id) { $st=$dbh->prepare('SELECT * FROM investments WHERE tenant_id=? AND id=?'); $st->execute([$tenantId,(int)$id]); $row=$st->fetch(); return $this->json($row?:['error'=>'Not found'],$row?200:404);}                
+                $st=$dbh->prepare('SELECT * FROM investments WHERE tenant_id=? ORDER BY id DESC'); $st->execute([$tenantId]); return $this->json($st->fetchAll());
+            case 'POST':
+                $b=$this->bodyJson(); $aid=(int)($b['account_id']??0); $name=mb_substr(trim($b['name']??''),0,120); $symbol=mb_substr(trim($b['symbol']??''),0,20); $qty=(float)($b['quantity']??0); $price=(float)($b['price']??0);
+                if($aid<=0 || $name==='') return $this->json(['error'=>'Invalid payload'],422);
+                $st=$dbh->prepare('INSERT INTO investments (tenant_id,account_id,name,symbol,quantity,price) VALUES (?,?,?,?,?,?)');
+                $st->execute([$tenantId,$aid,$name,$symbol,$qty,$price]); return $this->json(['id'=>(int)$dbh->lastInsertId()],201);
+            case 'PUT':
+            case 'PATCH':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $b=$this->bodyJson(); $fields=[]; $vals=[];
+                foreach(['account_id','name','symbol','quantity','price'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
+                if(!$fields) return $this->json(['error'=>'No fields'],400); $vals[]=$tenantId; $vals[]=(int)$id; $sql='UPDATE investments SET '.implode(',', $fields).' WHERE tenant_id=? AND id=?'; $dbh->prepare($sql)->execute($vals); return $this->json(['ok'=>true]);
+            case 'DELETE':
+                if(!$id) return $this->json(['error'=>'ID required'],400); $dbh->prepare('DELETE FROM investments WHERE tenant_id=? AND id=?')->execute([$tenantId,(int)$id]); return $this->json(['ok'=>true]);
+        }
+        return $this->json(['error'=>'Method not allowed'],405);
     }
 
     private function accounts(PDO $dbh, int $tenantId, string $method, $id) {
