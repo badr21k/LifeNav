@@ -35,8 +35,8 @@ function csrf_verify_header(string $headerName = 'X-CSRF-Token'): void {
     $headerKey = 'HTTP_' . strtoupper(str_replace('-', '_', $headerName));
     $sent = (string)($_SERVER[$headerKey] ?? '');
     $valid = is_string($sent) && $sent !== '' && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $sent);
-    // rotate token regardless
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    // Do NOT rotate token here; rotating it would break subsequent AJAX requests
+    // The token will be rotated on full page form posts or during auth events.
     if (!$valid) {
         http_response_code(400);
         header('Content-Type: application/json');
