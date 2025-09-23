@@ -6,6 +6,13 @@ class Finance extends Controller {
         if (!isset($_SESSION['auth'])) { header('Location: /login'); exit; }
     }
 
+    private function tableExists(PDO $dbh, string $table): bool {
+        try {
+            $st = $dbh->query("SHOW TABLES LIKE " . $dbh->quote($table));
+            return (bool)$st->fetch();
+        } catch (Throwable $e) { return false; }
+    }
+
     /* -------------------- Budgets & Lines -------------------- */
     private function budgets(PDO $dbh, int $tenantId, string $method, $id) {
         switch ($method) {
@@ -233,6 +240,13 @@ class Finance extends Controller {
                 $rates = $this->fetchRates($base);
                 return $this->json(['base'=>$base,'rates'=>$rates]);
 
+            case 'summary':
+                if ($method !== 'GET') return $this->json(['error'=>'Method not allowed'],405);
+                $month = trim($_GET['month'] ?? '');
+                if (!preg_match('/^\d{4}-\d{2}$/', $month)) { $month = date('Y-m'); }
+                $resp = $this->monthlySummary($dbh, $tenantId, $month);
+                return $this->json($resp);
+
             case 'accounts':
                 return $this->accounts($dbh, $tenantId, $method, $id);
 
@@ -370,6 +384,39 @@ class Finance extends Controller {
         $defaultCurrency = $accounts[0]['currency'] ?? 'CAD';
 
         return compact('categories','subcategories','payment_methods','accounts','goals','budgets','income','transfers','employers','payruns','shifts','debts','investment_accounts','investments','defaultCurrency');
+    }
+
+    // Current-month summary used by Finance + Essentials
+    private function monthlySummary(PDO $dbh, int $tenantId, string $ym): array {
+        // $ym format: YYYY-MM
+        $start = $ym.'-01';
+        // compute first day of next month
+        $end = date('Y-m-d', strtotime($start.' +1 month'));
+
+        // Paycheck = sum of pay_runs.net_cents where period_end falls within month
+        $st = $dbh->prepare('SELECT COALESCE(SUM(net_cents),0) AS s FROM pay_runs WHERE tenant_id=? AND period_end >= ? AND period_end < ?');
+        $st->execute([$tenantId,$start,$end]);
+        $paycheck_cents = (int)($st->fetch()['s'] ?? 0);
+
+        // Expenses from expenses table if present
+        $expenses_cents = 0;
+        if ($this->tableExists($dbh,'expenses')) {
+            try {
+                $q = $dbh->prepare('SELECT COALESCE(SUM(amount_cents),0) AS s FROM expenses WHERE tenant_id=? AND date >= ? AND date < ?');
+                $q->execute([$tenantId,$start,$end]);
+                $expenses_cents = (int)($q->fetch()['s'] ?? 0);
+            } catch (Throwable $e) { $expenses_cents = 0; }
+        }
+
+        // Income for this month (for now align with paycheck from pay runs)
+        $income_cents = $paycheck_cents;
+
+        return [
+            'month' => $ym,
+            'paycheck_cents' => $paycheck_cents,
+            'income_cents' => $income_cents,
+            'expenses_cents' => $expenses_cents,
+        ];
     }
 
     /* ---------------- Employers ---------------- */

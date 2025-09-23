@@ -1,3 +1,5 @@
+        /* Dark theme overlay */
+        [data-theme="dark"] .loading-overlay { background: rgba(255,255,255,0.06); }
 <?php require 'app/views/templates/header.php'; ?>
 
 <head>
@@ -59,7 +61,7 @@
         .loading-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.05);
+            background: rgba(0,0,0,0.08);
             display: none;
             align-items: center;
             justify-content: center;
@@ -158,6 +160,9 @@
         }
 
         .header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
             display: flex;
             flex-direction: column;
             gap: 1rem;
@@ -168,6 +173,7 @@
             box-shadow: var(--shadow-md);
             border: none;
             background: linear-gradient(145deg, var(--card), var(--background));
+            backdrop-filter: saturate(1.2) blur(6px);
         }
 
         @media (min-width: 768px) {
@@ -1113,6 +1119,20 @@
                     <div class="progress-fill shifts" style="width: 0%;"></div>
                 </div>
             </div>
+            <div class="summary-item">
+                <div class="summary-label">Income (This Month)</div>
+                <div class="summary-value" id="income-month">$0.00</div>
+                <div class="progress-bar">
+                    <div class="progress-fill income" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Expenses (This Month)</div>
+                <div class="summary-value" id="expenses-month">$0.00</div>
+                <div class="progress-bar">
+                    <div class="progress-fill debt" style="width: 0%;"></div>
+                </div>
+            </div>
         </div>
 
         <div class="tabs">
@@ -1472,6 +1492,9 @@
         let activeRequests = 0;
         function beginLoad(){ activeRequests++; overlayEl.classList.add('active'); }
         function endLoad(){ activeRequests = Math.max(0, activeRequests-1); if(activeRequests===0) overlayEl.classList.remove('active'); }
+
+        // Cross-tab/channel sync
+        const financeChannel = new BroadcastChannel('lifenav_finance');
 
         async function apiGet(path){ beginLoad(); try{ const r=await fetch(path,{credentials:'same-origin'}); if(!r.ok) throw new Error('GET '+path+' '+r.status); return await r.json(); } finally { endLoad(); } }
         async function apiSend(method, path, body){ beginLoad(); try{ const r=await fetch(path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body: body?JSON.stringify(body):null}); if(!r.ok){ const t=await r.text(); throw new Error(method+' '+path+' '+r.status+' '+t);} return r.status===204?null:await r.json(); } finally { endLoad(); } }
@@ -2058,6 +2081,10 @@
             if (init.defaultCurrency) financeData.currency = init.defaultCurrency;
             const sourceEl = document.getElementById('finance-source-text'); if(sourceEl) sourceEl.textContent = 'Database';
 
+            // monthly summary for current month
+            const ym = new Date().toISOString().slice(0,7);
+            financeData.monthSummary = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`);
+
             // map employers
             financeData.employers = (init.employers||[]).map(e=>({ id:String(e.id), name:e.name, paySchedule:e.pay_schedule, baseRate: parseFloat(e.base_rate||0) }));
             // map pay runs
@@ -2091,6 +2118,13 @@
             document.getElementById('investments-value').textContent = formatCurrency(calculateInvestmentsValue());
             document.getElementById('savings-progress').textContent = calculateSavingsProgress() + '%';
             document.getElementById('month-shifts').textContent = calculateMonthShifts() + ' hrs';
+            // monthly figures
+            if (financeData.monthSummary) {
+                const inc = (financeData.monthSummary.income_cents||0)/100;
+                const exp = (financeData.monthSummary.expenses_cents||0)/100;
+                const incEl = document.getElementById('income-month'); if(incEl) incEl.textContent = formatCurrency(inc);
+                const expEl = document.getElementById('expenses-month'); if(expEl) expEl.textContent = formatCurrency(exp);
+            }
             
             // Update progress bars
             document.querySelector('#income-ytd + .progress-bar .progress-fill').style.width = `${Math.min(calculateYTDIncome() / 10000 * 100, 100)}%`;
@@ -2630,11 +2664,12 @@
                 else await apiSend('POST', '/finance/api/payruns', payload);
                 await loadData(); updateUI();
                 showToast(id?'Pay run updated':'Pay run created','success');
+                try{ financeChannel.postMessage({type:'pay_update', month: new Date().toISOString().slice(0,7)}); }catch(_e){}
             } catch(e){ showToast(e.message||'Failed', 'error'); } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deletePayRun(id) {
-            try{ await apiSend('DELETE', `/finance/api/payruns/${encodeURIComponent(id)}`); await loadData(); updateUI(); showToast('Pay run deleted','success'); } catch(e){ showToast(e.message||'Delete failed','error'); }
+            try{ await apiSend('DELETE', `/finance/api/payruns/${encodeURIComponent(id)}`); await loadData(); updateUI(); showToast('Pay run deleted','success'); try{ financeChannel.postMessage({type:'pay_update', month: new Date().toISOString().slice(0,7)}); }catch(_e){} } catch(e){ showToast(e.message||'Delete failed','error'); }
         }
 
         async function saveShift(id) {
