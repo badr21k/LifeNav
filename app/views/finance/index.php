@@ -61,38 +61,58 @@
         .loading-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.08);
+            background: rgba(2, 6, 12, 0.18);
+            -webkit-backdrop-filter: blur(6px) saturate(1.1);
+            backdrop-filter: blur(6px) saturate(1.1);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 2000;
         }
         .loading-overlay.active { display: flex; }
+        .loader-card {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            padding: 0.875rem 1rem;
+            background: var(--card);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+        }
+        .loader-text { font-weight: 600; letter-spacing: -0.01em; }
         .spinner {
-            width: 42px;
-            height: 42px;
-            border: 4px solid var(--border);
-            border-top-color: var(--primary);
+            inline-size: 28px;
+            block-size: 28px;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            background:
+              conic-gradient(from 0deg, var(--primary) 0 340deg, transparent 340deg 360deg);
+            -webkit-mask: radial-gradient(farthest-side, transparent 60%, #000 61%);
+            mask: radial-gradient(farthest-side, transparent 60%, #000 61%);
+            animation: spin .9s linear infinite;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.04) inset;
         }
 
         /* Button level spinner state */
         .btn.loading {
             position: relative;
             pointer-events: none;
-            opacity: 0.8;
+            opacity: 0.9;
         }
         .btn.loading::after {
             content: '';
             position: absolute;
             left: 50%; top: 50%;
-            width: 18px; height: 18px;
-            border: 2px solid currentColor;
-            border-top-color: transparent;
+            width: 16px; height: 16px;
             border-radius: 50%;
+            background:
+              conic-gradient(from 0deg, currentColor 0 340deg, transparent 340deg 360deg);
+            -webkit-mask: radial-gradient(farthest-side, transparent 60%, #000 61%);
+            mask: radial-gradient(farthest-side, transparent 60%, #000 61%);
             transform: translate(-50%, -50%);
             animation: spin .8s linear infinite;
+            opacity: .9;
         }
 
         /* Toast notifications */
@@ -1491,7 +1511,7 @@
         const overlayEl = document.createElement('div');
         overlayEl.id = 'global-spinner';
         overlayEl.className = 'loading-overlay';
-        overlayEl.innerHTML = '<div class="spinner" aria-label="Loading"></div>';
+        overlayEl.innerHTML = '<div class="loader-card" role="status" aria-live="polite"><div class="spinner" aria-hidden="true"></div><div class="loader-text">Loading...</div></div>';
         document.addEventListener('DOMContentLoaded', () => { document.body.appendChild(overlayEl); });
         let activeRequests = 0;
         function beginLoad(){ activeRequests++; overlayEl.classList.add('active'); }

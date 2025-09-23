@@ -897,29 +897,7 @@
         }
 
 
-// Currency list
-const currencies = [
-    { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
-    { code: 'USD', symbol: '$', name: 'US Dollar' },
-    { code: 'EUR', symbol: '€', name: 'Euro' },
-    { code: 'GBP', symbol: '£', name: 'British Pound' },
-    { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
-    { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
-    { code: 'CHF', symbol: 'Fr', name: 'Swiss Franc' },
-    { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
-    { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
-    { code: 'MXN', symbol: '$', name: 'Mexican Peso' },
-    { code: 'NZD', symbol: '$', name: 'New Zealand Dollar' },
-    { code: 'SGD', symbol: '$', name: 'Singapore Dollar' },
-    { code: 'HKD', symbol: '$', name: 'Hong Kong Dollar' },
-    { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
-    { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
-    { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
-    { code: 'TRY', symbol: '₺', name: 'Turkish Lira' },
-    { code: 'RUB', symbol: '₽', name: 'Russian Ruble' },
-    { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
-    { code: 'ZAR', symbol: 'R', name: 'South African Rand' }
-];
+// Currency list is loaded from /finance/api/currencies into state.currencies
 
 // Category icons
 const categoryIcons = {
@@ -983,6 +961,7 @@ function App() {
         expenses: [],
         dataSource: 'Local',
         maps: { catByName: {}, subByCatName: {}, pmByName: {} },
+        currencies: [],
         categories: {
             normal: [
                 { name: 'Transportation', subcategories: ['Car Insurance', 'Fuel', 'Parking', 'Public Transit', 'Other'] },
@@ -1021,7 +1000,7 @@ function App() {
     // Cross-tab/channel sync with Finance
     const financeChannelRef = useRef(null);
 
-    // Load currency settings and current month paycheck from Finance summary
+    // Load currency settings, available currencies, and current month paycheck from Finance summary
     useEffect(() => {
         const ym = new Date().toISOString().slice(0,7);
         let mounted = true;
@@ -1033,6 +1012,11 @@ function App() {
                     if (s && s.default_currency) {
                         if (!mounted) return; setState(prev=>({ ...prev, baseCurrency: s.default_currency }));
                     }
+                } catch(_e){}
+                // currencies list for symbol mapping and selectors
+                try {
+                    const list = await apiGet('/finance/api/currencies');
+                    if (!mounted) return; setState(prev=>({ ...prev, currencies: Array.isArray(list) ? list : [] }));
                 } catch(_e){}
                 const s = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`);
                 if (!mounted) return;
@@ -1581,7 +1565,7 @@ function App() {
 
     // --------- Derived values for replacement sections ----------
     const summary = getSummary();
-    const baseSymbol = currencies.find(c => c.code === state.baseCurrency)?.symbol || 'C$';
+    const baseSymbol = state.currencies.find(c => c.code === state.baseCurrency)?.symbol || 'C$';
     const currentSubs = state.categories[state.mode].find(c => c.name === state.currentCategory)?.subcategories || [];
     const filtered = state.expenses.filter(e =>
         e.mode === state.mode &&
