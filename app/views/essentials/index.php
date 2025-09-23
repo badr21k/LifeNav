@@ -1221,6 +1221,35 @@ function App() {
         const category = document.getElementById('modal-category')?.value;
         const subcategory = document.getElementById('modal-subcategory')?.value || null;
         const currency = document.getElementById('currency')?.value || 'CAD';
+        const note = document.getElementById('description')?.value || subcategory || '';
+        const catId = state.maps.catByName[category] || null;
+        // subByCatName is an array of {id,name}
+        const subArr = state.maps.subByCatName[category] || [];
+        const subObj = subcategory ? subArr.find(x => x.name === subcategory) : null;
+        const subId = subObj ? subObj.id : null;
+        if (!catId) { setState(prev=>({ ...prev, error: 'Unknown category' })); return; }
+
+        try {
+            const payload = { date: dateInput.value, amount_cents: Math.round(amount*100), currency, category_id: catId, subcategory_id: subId, payment_method_id: null, merchant: '', note };
+            // Persist weekly counting and recurring fields
+            payload.count_weekly = !!document.getElementById('count-weekly')?.checked;
+            if (document.getElementById('recurring')?.checked) {
+                const forever = !!document.getElementById('recurring-forever')?.checked;
+                const startVal = document.getElementById('recurring-start')?.value || null;
+                const endVal = forever ? null : (document.getElementById('recurring-end')?.value || null);
+                payload.recurring_start = startVal;
+                payload.recurring_end = endVal;
+                payload.recurring_forever = forever;
+            } else {
+                payload.recurring_start = null;
+                payload.recurring_end = null;
+                payload.recurring_forever = 0;
+            }
+
+            if (state.editingId) await apiSend('PUT', `/essentials/api/expenses/${encodeURIComponent(state.editingId)}`, payload);
+            else await apiSend('POST', '/essentials/api/expenses', payload);
+            await loadEssentials();
+            setState(prev=>({ ...prev, modal: null, editingId: null, fromRecurringList: false, error: null }));
         } catch (e) { setState(prev=>({ ...prev, error: e.message })); }
     };
 
