@@ -82,6 +82,24 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           if(cur==='light') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme','dark');
           try { localStorage.setItem(key, cur); } catch(_) {}
         }
+        // Mobile navbar: auto-collapse on link click or outside tap
+        document.addEventListener('DOMContentLoaded', function(){
+          var navEl = document.getElementById('navbarSupportedContent');
+          if (!navEl) return;
+          // Use Bootstrap Collapse API if available
+          var bsCollapse = null;
+          try { bsCollapse = bootstrap && bootstrap.Collapse ? new bootstrap.Collapse(navEl, { toggle: false }) : null; } catch(_) {}
+          // Collapse when a nav-link is clicked
+          navEl.addEventListener('click', function(e){
+            var a = e.target.closest('a.nav-link');
+            if (a && bsCollapse) { bsCollapse.hide(); }
+          });
+          // Collapse when clicking outside of the navbar while it is shown
+          document.addEventListener('click', function(e){
+            if (!navEl.classList.contains('show')) return;
+            if (!e.target.closest('.navbar')) { try { bsCollapse && bsCollapse.hide(); } catch(_) {} }
+          });
+        });
       })();
     </script>
 </head>
