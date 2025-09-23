@@ -1018,6 +1018,34 @@ function App() {
     const chartRef = useRef(null);
     const categoryChartRefs = useRef({});
 
+    // Cross-tab/channel sync with Finance
+    const financeChannelRef = useRef(null);
+
+    // Load current month paycheck from Finance summary
+    useEffect(() => {
+        const ym = new Date().toISOString().slice(0,7);
+        let mounted = true;
+        (async () => {
+            try {
+                const s = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`);
+                if (!mounted) return;
+                setState(prev => ({ ...prev, paycheck: (s?.income_cents||0)/100 }));
+            } catch (e) {
+                console.warn('summary fetch failed', e);
+            }
+        })();
+        // Listen for finance updates
+        financeChannelRef.current = new BroadcastChannel('lifenav_finance');
+        financeChannelRef.current.onmessage = (ev) => {
+            if (ev?.data?.type === 'pay_update' && ev?.data?.month === ym) {
+                apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`).then(s=>{
+                    setState(prev => ({ ...prev, paycheck: (s?.income_cents||0)/100 }));
+                }).catch(()=>{});
+            }
+        };
+        return () => { mounted = false; try{ financeChannelRef.current?.close(); }catch(_e){} };
+    }, []);
+
     // Fetch backend init and expenses
     const loadEssentials = async () => {
         try {
@@ -1144,18 +1172,16 @@ function App() {
 
     // Save budgets
     const saveBudgets = () => {
-        const paycheck = parseFloat(document.getElementById('paycheck')?.value) || 0;
         const weeklyBudgetNormal = parseFloat(document.getElementById('weekly-budget-normal')?.value) || 0;
         const travelBudget = parseFloat(document.getElementById('travel-budget')?.value) || 0;
         const weeklyBudgetTravel = parseFloat(document.getElementById('weekly-budget-travel')?.value) || 0;
         setState(prev => ({
             ...prev,
-            paycheck: prev.mode === 'normal' ? paycheck : prev.paycheck,
+            // paycheck is sourced from Finance summary; do not change from Essentials UI
+            paycheck: prev.paycheck,
             weeklyBudgetNormal: prev.mode === 'normal' ? weeklyBudgetNormal : prev.weeklyBudgetNormal,
             travelBudget: prev.mode === 'travel' ? travelBudget : prev.travelBudget,
             weeklyBudgetTravel: prev.mode === 'travel' ? weeklyBudgetTravel : prev.weeklyBudgetTravel,
-            modal: null,
-            error: null,
         }));
     };
 
@@ -1385,7 +1411,8 @@ function App() {
                                 <>
                                     <div className="form-group">
                                         <label htmlFor="paycheck">Paycheck</label>
-                                        <input id="paycheck" type="number" step="0.01" className="form-control" defaultValue={state.paycheck} placeholder="0.00" />
+                                        <input id="paycheck" type="number" step="0.01" className="form-control" value={state.paycheck} readOnly disabled placeholder="0.00" />
+                                        <small className="text-gray-500">Value comes from Finance pay runs (current month).</small>
                                     </div>
                                     <div className="form-group">
                                         <label htmlFor="weekly-budget-normal">Weekly Budget</label>

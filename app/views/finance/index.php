@@ -1,5 +1,3 @@
-        /* Dark theme overlay */
-        [data-theme="dark"] .loading-overlay { background: rgba(255,255,255,0.06); }
 <?php require 'app/views/templates/header.php'; ?>
 
 <head>
@@ -8,6 +6,8 @@
     <title>Finance Hub - Modern Financial Manager</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Dark theme overlay */
+        [data-theme="dark"] .loading-overlay { background: rgba(255,255,255,0.06); }
         :root {
             --primary: #2c6b5f;
             --primary-dark: #1f4b43;
@@ -2083,7 +2083,12 @@
 
             // monthly summary for current month
             const ym = new Date().toISOString().slice(0,7);
-            financeData.monthSummary = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`);
+            try {
+                financeData.monthSummary = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`);
+            } catch (e) {
+                console.warn('summary endpoint unavailable', e);
+                financeData.monthSummary = { month: ym, income_cents: 0, expenses_cents: 0 };
+            }
 
             // map employers
             financeData.employers = (init.employers||[]).map(e=>({ id:String(e.id), name:e.name, paySchedule:e.pay_schedule, baseRate: parseFloat(e.base_rate||0) }));
