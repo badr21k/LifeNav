@@ -1,6 +1,5 @@
 
 <?php require 'app/views/templates/header.php'; ?>
-<?php require 'app/views/partials/loader.php'; ?>
 
 
 <head>
@@ -876,8 +875,9 @@
 
 </head>
 <body>
+    <?php require 'app/views/partials/loader.php'; ?>
     <div id="root"></div>
-    <script type="text/babel">
+    <script type="text/babel" data-presets="env,react">
         const { useState, useEffect, useRef } = React;
         // CSRF token for API calls
         const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
@@ -1227,26 +1227,7 @@ function App() {
         catch (e) { console.error(e); }
     };
 
-    // Modal controls (missing earlier)
-    const openModal = (type, id = null, fromRecurring = false) => {
-        setState(prev => ({
-            ...prev,
-            modal: type,
-            editingId: id,
-            fromRecurringList: !!fromRecurring,
-            error: null,
-        }));
-    };
-
-    const closeModal = () => {
-        setState(prev => ({
-            ...prev,
-            modal: null,
-            editingId: null,
-            fromRecurringList: false,
-            error: null,
-        }));
-    };
+    
 
     // Render charts
     useEffect(() => {
@@ -1495,7 +1476,7 @@ function App() {
                                 <div className="form-group">
                                     <label htmlFor="currency">Currency</label>
                                     <select id="currency" className="form-control" defaultValue={editingExpense?.currency || 'CAD'}>
-                                        {currencies.map(c => (
+                                        {state.currencies.map(c => (
                                             <option key={c.code} value={c.code}>{c.code} ({c.symbol}) - {c.name}</option>
                                         ))}
                                     </select>
@@ -1916,8 +1897,9 @@ function App() {
     );
 }
 
-// Render the app
-ReactDOM.render(<App />, document.getElementById('root'));
+// Render the app (React 18)
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
 
 
 </script>
