@@ -55,12 +55,19 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     <script>
       (function(){
         const key='lifenav_theme';
-        const saved = localStorage.getItem(key);
-        if(saved){ document.documentElement.setAttribute('data-theme', saved); }
+        try {
+          let saved = localStorage.getItem(key);
+          if (!saved) {
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            saved = prefersDark ? 'dark' : 'light';
+            localStorage.setItem(key, saved);
+          }
+          if (saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+        } catch(_) {}
         window.toggleTheme = function(){
           const cur = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
           if(cur==='light') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme','dark');
-          localStorage.setItem(key, cur);
+          try { localStorage.setItem(key, cur); } catch(_) {}
         }
       })();
     </script>
