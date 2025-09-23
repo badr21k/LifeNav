@@ -199,6 +199,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             <li><a class="dropdown-item text-danger" href="/logout" role="menuitem"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
           </ul>
         </li>
+      </ul>
     </div>
 
     <!-- Right (User menu) -->
