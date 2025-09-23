@@ -1,3 +1,8 @@
+        // Render a skeleton table row with N columns
+        function renderSkeletonRow(cols){
+            const tr=document.createElement('tr');
+            for(let i=0;i<cols;i++){ const td=document.createElement('td'); td.innerHTML='<div class="skeleton"></div>'; tr.appendChild(td);} return tr;
+        }
 <?php require 'app/views/templates/header.php'; ?>
 
 <head>
@@ -91,6 +96,45 @@
             border-radius: 50%;
             transform: translate(-50%, -50%);
             animation: spin .8s linear infinite;
+        }
+
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            right: 1rem;
+            bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+            z-index: 3000;
+        }
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .75rem 1rem;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            background: var(--card);
+            border: 1px solid var(--border);
+            animation: fadeIn .2s ease;
+        }
+        .toast.success { border-color: rgba(16,185,129,.5); }
+        .toast.error { border-color: rgba(239,68,68,.5); }
+
+        /* Table skeletons */
+        .skeleton {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.1) 37%, rgba(0,0,0,0.06) 63%);
+            background-size: 400% 100%;
+            animation: shimmer 1.4s ease infinite;
+            border-radius: 6px;
+            height: 14px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
         }
 
         body {
@@ -1410,6 +1454,11 @@
         const paymentFormContent = document.getElementById('payment-form-content');
         const tabs = document.querySelectorAll('.tab');
         const sections = document.querySelectorAll('.section');
+        // Toast container
+        const toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container';
+        document.addEventListener('DOMContentLoaded', () => { document.body.appendChild(toastContainer); });
+        function showToast(message, type='success'){ const el=document.createElement('div'); el.className='toast '+type; el.innerHTML=`<span>${message}</span>`; toastContainer.appendChild(el); setTimeout(()=>{ el.remove(); }, 3000); }
 
         // CSRF + API helpers
         const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
@@ -2120,6 +2169,12 @@
         function updateEmployersList() {
             const employersList = document.getElementById('employers-list');
             employersList.innerHTML = '';
+            if (activeRequests>0 && financeData.employers.length===0){
+                employersList.appendChild(renderSkeletonRow(4));
+                employersList.appendChild(renderSkeletonRow(4));
+                employersList.appendChild(renderSkeletonRow(4));
+                return;
+            }
             
             if (financeData.employers.length === 0) {
                 employersList.innerHTML = `
@@ -2194,6 +2249,12 @@
         function updateShiftsList() {
             const shiftsList = document.getElementById('shifts-list');
             shiftsList.innerHTML = '';
+            if (activeRequests>0 && financeData.shifts.length===0){
+                shiftsList.appendChild(renderSkeletonRow(6));
+                shiftsList.appendChild(renderSkeletonRow(6));
+                shiftsList.appendChild(renderSkeletonRow(6));
+                return;
+            }
             
             if (financeData.shifts.length === 0) {
                 shiftsList.innerHTML = `
@@ -2350,6 +2411,12 @@
         function updateInvestmentAccountsList() {
             const accountsList = document.getElementById('investment-accounts-list');
             accountsList.innerHTML = '';
+            if (activeRequests>0 && financeData.investmentAccounts.length===0){
+                accountsList.appendChild(renderSkeletonRow(4));
+                accountsList.appendChild(renderSkeletonRow(4));
+                accountsList.appendChild(renderSkeletonRow(4));
+                return;
+            }
             
             if (financeData.investmentAccounts.length === 0) {
                 accountsList.innerHTML = `
@@ -2385,6 +2452,12 @@
         function updateInvestmentsList() {
             const investmentsList = document.getElementById('investments-list');
             investmentsList.innerHTML = '';
+            if (activeRequests>0 && financeData.investments.length===0){
+                investmentsList.appendChild(renderSkeletonRow(5));
+                investmentsList.appendChild(renderSkeletonRow(5));
+                investmentsList.appendChild(renderSkeletonRow(5));
+                return;
+            }
             
             // Update investment stats
             const portfolioValue = calculateInvestmentsValue();
@@ -2436,6 +2509,12 @@
         function updateSavingsList() {
             const savingsList = document.getElementById('savings-list');
             savingsList.innerHTML = '';
+            if (activeRequests>0 && financeData.savingsGoals.length===0){
+                savingsList.appendChild(renderSkeletonRow(4));
+                savingsList.appendChild(renderSkeletonRow(4));
+                savingsList.appendChild(renderSkeletonRow(4));
+                return;
+            }
             
             // Update savings stats
             const totalSaved = financeData.savingsGoals.reduce((total, goal) => total + goal.saved, 0);
@@ -2528,12 +2607,12 @@
                 if (id) await apiSend('PUT', `/finance/api/employers/${encodeURIComponent(id)}`, payload);
                 else await apiSend('POST', '/finance/api/employers', payload);
                 await loadData(); updateUI();
-            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
+                showToast(id?'Employer updated':'Employer created','success');
+            } catch(e){ showToast(e.message||'Failed', 'error'); } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteEmployer(id) {
-            await apiSend('DELETE', `/finance/api/employers/${encodeURIComponent(id)}`);
-            await loadData(); updateUI();
+            try{ await apiSend('DELETE', `/finance/api/employers/${encodeURIComponent(id)}`); await loadData(); updateUI(); showToast('Employer deleted','success'); } catch(e){ showToast(e.message||'Delete failed','error'); }
         }
 
         async function savePayRun(id) {
@@ -2548,12 +2627,12 @@
                 if (id) await apiSend('PUT', `/finance/api/payruns/${encodeURIComponent(id)}`, payload);
                 else await apiSend('POST', '/finance/api/payruns', payload);
                 await loadData(); updateUI();
-            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
+                showToast(id?'Pay run updated':'Pay run created','success');
+            } catch(e){ showToast(e.message||'Failed', 'error'); } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deletePayRun(id) {
-            await apiSend('DELETE', `/finance/api/payruns/${encodeURIComponent(id)}`);
-            await loadData(); updateUI();
+            try{ await apiSend('DELETE', `/finance/api/payruns/${encodeURIComponent(id)}`); await loadData(); updateUI(); showToast('Pay run deleted','success'); } catch(e){ showToast(e.message||'Delete failed','error'); }
         }
 
         async function saveShift(id) {
@@ -2583,12 +2662,12 @@
                 if (id) await apiSend('PUT', `/finance/api/shifts/${encodeURIComponent(id)}`, payload);
                 else await apiSend('POST', '/finance/api/shifts', payload);
                 await loadData(); updateUI();
-            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
+                showToast(id?'Shift updated':'Shift created','success');
+            } catch(e){ showToast(e.message||'Failed', 'error'); } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteShift(id) {
-            await apiSend('DELETE', `/finance/api/shifts/${encodeURIComponent(id)}`);
-            await loadData(); updateUI();
+            try{ await apiSend('DELETE', `/finance/api/shifts/${encodeURIComponent(id)}`); await loadData(); updateUI(); showToast('Shift deleted','success'); } catch(e){ showToast(e.message||'Delete failed','error'); }
         }
 
         async function saveDebt(id) {
@@ -2606,12 +2685,12 @@
                 if (id) await apiSend('PUT', `/finance/api/debts/${encodeURIComponent(id)}`, payload);
                 else await apiSend('POST', '/finance/api/debts', payload);
                 await loadData(); updateUI();
-            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
+                showToast(id?'Debt updated':'Debt created','success');
+            } catch(e){ showToast(e.message||'Failed', 'error'); } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteDebt(id) {
-            await apiSend('DELETE', `/finance/api/debts/${encodeURIComponent(id)}`);
-            await loadData(); updateUI();
+            try{ await apiSend('DELETE', `/finance/api/debts/${encodeURIComponent(id)}`); await loadData(); updateUI(); showToast('Debt deleted','success'); } catch(e){ showToast(e.message||'Delete failed','error'); }
         }
 
         async function saveInvestmentAccount(id) {
@@ -2625,12 +2704,12 @@
                 if (id) await apiSend('PUT', `/finance/api/investment_accounts/${encodeURIComponent(id)}`, payload);
                 else await apiSend('POST', '/finance/api/investment_accounts', payload);
                 await loadData(); updateUI();
-            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
+                showToast(id?'Account updated':'Account created','success');
+            } catch(e){ showToast(e.message||'Failed', 'error'); } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteInvestmentAccount(id) {
-            await apiSend('DELETE', `/finance/api/investment_accounts/${encodeURIComponent(id)}`);
-            await loadData(); updateUI();
+            try{ await apiSend('DELETE', `/finance/api/investment_accounts/${encodeURIComponent(id)}`); await loadData(); updateUI(); showToast('Account deleted','success'); } catch(e){ showToast(e.message||'Delete failed','error'); }
         }
 
         async function saveInvestment(id) {
@@ -2645,12 +2724,12 @@
                 if (id) await apiSend('PUT', `/finance/api/investments/${encodeURIComponent(id)}`, payload);
                 else await apiSend('POST', '/finance/api/investments', payload);
                 await loadData(); updateUI();
-            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
+                showToast(id?'Investment updated':'Investment created','success');
+            } catch(e){ showToast(e.message||'Failed', 'error'); } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteInvestment(id) {
-            await apiSend('DELETE', `/finance/api/investments/${encodeURIComponent(id)}`);
-            await loadData(); updateUI();
+            try{ await apiSend('DELETE', `/finance/api/investments/${encodeURIComponent(id)}`); await loadData(); updateUI(); showToast('Investment deleted','success'); } catch(e){ showToast(e.message||'Delete failed','error'); }
         }
 
         async function saveSavingsGoal(id) {
@@ -2664,7 +2743,8 @@
                 if (id) await apiSend('PUT', `/finance/api/savings_goals/${encodeURIComponent(id)}`, payload);
                 else await apiSend('POST', '/finance/api/savings_goals', payload);
                 await loadData(); updateUI();
-            } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
+                showToast(id?'Goal updated':'Goal created','success');
+            } catch(e){ showToast(e.message||'Failed', 'error'); } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deleteSavingsGoal(id) {
