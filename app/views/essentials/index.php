@@ -16,50 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.2/babel.min.js"></script>
     <style>
-        :root {
-            --primary: #2c6b5f;
-            --primary-dark: #1f4b43;
-            --primary-light: #e6f0ee;
-            --secondary: #5c6b7a;
-            --accent: #d97706;
-            --background: #f9fafb;
-            --card: #ffffff;
-            --text: #111827;
-            --text-light: #6b7280;
-            --border: #d1d5db;
-            --success: #059669;
-            --warning: #d97706;
-            --danger: #dc2626;
-            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --radius-sm: 0.5rem;
-            --radius-md: 0.75rem;
-            --radius-lg: 1rem;
-            --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            --safe-area-inset-top: env(safe-area-inset-top, 0);
-            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0);
-            --safe-area-inset-left: env(safe-area-inset-left, 0);
-            --safe-area-inset-right: env(safe-area-inset-right, 0);
-        }
-
-        [data-theme="dark"] {
-            --primary: #4ca89b;
-            --primary-dark: #3b867b;
-            --primary-light: #1a3c34;
-            --secondary: #9ca3af;
-            --accent: #f59e0b;
-            --background: #111827;
-            --card: #1f2a44;
-            --text: #f3f4f6;
-            --text-light: #d1d5db;
-            --border: #374151;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
+        /* Inherit global theme tokens from header; no per-page overrides here. */
 
         * {
             margin: 0;
