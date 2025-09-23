@@ -55,6 +55,13 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       .dropdown-menu{ z-index: 4000; box-shadow: var(--shadow-md); border:1px solid var(--border); background:var(--card); }
       body{ background:var(--background); color:var(--text); font-family: var(--font-sans); padding-top: var(--header-h); }
       .footer{ background:transparent; color:var(--text-light); border-top:1px solid var(--border); padding:1rem; text-align:center; }
+      /* Precise centering for header tabs on large screens */
+      @media (min-width: 992px) {
+        .navbar .container-fluid { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem; }
+        .navbar .navbar-collapse { grid-column: 2; justify-content: center !important; }
+        .navbar .d-lg-flex { grid-column: 3; }
+        .navbar .navbar-nav { margin: 0 auto; }
+      }
     </style>
     <script>
       (function(){
@@ -91,8 +98,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     </button>
 
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <!-- Left -->
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+      <!-- Centered Nav -->
+      <ul class="navbar-nav mb-2 mb-lg-0">
         <li class="nav-item">
           <a class="nav-link<?= $active('home') ?>" href="/home"><i class="fa-solid fa-house"></i> Home</a>
         </li>
@@ -102,20 +109,20 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         <li class="nav-item">
           <a class="nav-link<?= $active('finance') ?>" href="/finance"><i class="fa-solid fa-sack-dollar"></i> Earnings</a>
         </li>
+    </div>
 
-      <!-- Right -->
-      <div class="ms-auto d-flex align-items-center">
-        <div class="dropdown">
-          <button class="btn btn-outline-secondary btn-sm dropdown-toggle user-chip" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fa-solid fa-user"></i>
-            <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-            <li><button class="dropdown-item" type="button" onclick="toggleTheme()"><i class="fa-solid fa-moon me-2"></i>Toggle Dark Mode</button></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
-          </ul>
-        </div>
+    <!-- Right (User menu) -->
+    <div class="d-none d-lg-flex align-items-center justify-content-end">
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle user-chip" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fa-solid fa-user"></i>
+          <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+          <li><button class="dropdown-item" type="button" onclick="toggleTheme()"><i class="fa-solid fa-moon me-2"></i>Toggle Dark Mode</button></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item text-danger" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
+        </ul>
       </div>
     </div>
   </div>
