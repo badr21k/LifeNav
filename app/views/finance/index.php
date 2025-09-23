@@ -122,7 +122,9 @@
             color: var(--text);
             line-height: 1.5;
             min-height: 100vh;
+            /* Keep page spacing while offsetting the fixed global header */
             padding: 1.5rem;
+            padding-top: calc(var(--header-h) + 1rem);
             font-size: 0.9375rem;
             font-weight: 400;
             display: flex;
