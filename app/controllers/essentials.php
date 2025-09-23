@@ -49,10 +49,16 @@ class essentials extends Controller {
                 $st=$dbh->prepare('SELECT e.*, c.name AS category_name, sc.name AS subcategory_name FROM expenses e LEFT JOIN categories c ON c.id=e.category_id LEFT JOIN subcategories sc ON sc.id=e.subcategory_id WHERE e.tenant_id=? AND e.id=?');
                 $st->execute([$tenantId,(int)$id]); $row=$st->fetch(); return $this->json($row?:['error'=>'Not found'],$row?200:404);
               }
+              // auto-generate recurring monthly instances before reading
+              $this->generateRecurring($dbh, $tenantId);
               $st=$dbh->prepare('SELECT e.*, c.name AS category_name, sc.name AS subcategory_name FROM expenses e LEFT JOIN categories c ON c.id=e.category_id LEFT JOIN subcategories sc ON sc.id=e.subcategory_id WHERE e.tenant_id=? ORDER BY e.date DESC, e.id DESC LIMIT 500');
               $st->execute([$tenantId]); return $this->json($st->fetchAll());
             case 'POST':
               $b=$this->bodyJson();
+              // ensure recurring columns exist (idempotent)
+              if (!$this->hasColumn($dbh,'expenses','recurring_start')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_start DATE NULL AFTER note"); } catch (Throwable $e) {} }
+              if (!$this->hasColumn($dbh,'expenses','recurring_end')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_end DATE NULL AFTER recurring_start"); } catch (Throwable $e) {} }
+              if (!$this->hasColumn($dbh,'expenses','recurring_forever')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_forever TINYINT(1) NOT NULL DEFAULT 0 AFTER recurring_end"); } catch (Throwable $e) {} }
               // ensure count_weekly column exists (idempotent)
               if (!$this->hasColumn($dbh,'expenses','count_weekly')) {
                 try { $dbh->exec("ALTER TABLE expenses ADD COLUMN count_weekly TINYINT(1) NOT NULL DEFAULT 1 AFTER note"); } catch (Throwable $e) { /* ignore */ }
@@ -66,10 +72,22 @@ class essentials extends Controller {
               $merchant=mb_substr(trim($b['merchant'] ?? ''),0,64);
               $note=mb_substr(trim($b['note'] ?? ''),0,255);
               $countWeekly = isset($b['count_weekly']) ? (int)!!$b['count_weekly'] : 1;
+              $recStart = (isset($b['recurring_start']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $b['recurring_start'])) ? $b['recurring_start'] : null;
+              $recEnd   = (isset($b['recurring_end'])   && preg_match('/^\d{4}-\d{2}-\d{2}$/', $b['recurring_end'])) ? $b['recurring_end'] : null;
+              $recForever = isset($b['recurring_forever']) ? (int)!!$b['recurring_forever'] : 0;
               $userId=$this->userId();
               if ($this->hasColumn($dbh,'expenses','count_weekly')) {
-                $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
-                $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly]);
+                $hasRec = $this->hasColumn($dbh,'expenses','recurring_start') && $this->hasColumn($dbh,'expenses','recurring_end') && $this->hasColumn($dbh,'expenses','recurring_forever');
+                if ($hasRec) {
+                  // ensure template/last_ym columns
+                  if (!$this->hasColumn($dbh,'expenses','recurring_template')) { try { $dbh->exec('ALTER TABLE expenses ADD COLUMN recurring_template TINYINT(1) NOT NULL DEFAULT 0 AFTER recurring_forever'); } catch (Throwable $e) {} }
+                  if (!$this->hasColumn($dbh,'expenses','recurring_last_ym')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_last_ym CHAR(7) NULL AFTER recurring_template"); } catch (Throwable $e) {} }
+                  $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,recurring_start,recurring_end,recurring_forever,recurring_template,recurring_last_ym,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+                  $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly,$recStart,$recEnd,$recForever,1,null]);
+                } else {
+                  $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+                  $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly]);
+                }
               } else {
                 $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
                 $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note]);
@@ -83,6 +101,10 @@ class essentials extends Controller {
               if (!$this->hasColumn($dbh,'expenses','count_weekly')) {
                 try { $dbh->exec("ALTER TABLE expenses ADD COLUMN count_weekly TINYINT(1) NOT NULL DEFAULT 1 AFTER note"); } catch (Throwable $e) { /* ignore */ }
               }
+              // ensure recurring columns exist
+              if (!$this->hasColumn($dbh,'expenses','recurring_start')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_start DATE NULL AFTER note"); } catch (Throwable $e) {} }
+              if (!$this->hasColumn($dbh,'expenses','recurring_end')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_end DATE NULL AFTER recurring_start"); } catch (Throwable $e) {} }
+              if (!$this->hasColumn($dbh,'expenses','recurring_forever')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_forever TINYINT(1) NOT NULL DEFAULT 0 AFTER recurring_end"); } catch (Throwable $e) {} }
               $fields=[]; $vals=[];
               foreach(['date','currency','merchant','note'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
               if(isset($b['amount_cents'])){ $fields[]='amount_cents=?'; $vals[]=(int)$b['amount_cents']; }
@@ -90,6 +112,14 @@ class essentials extends Controller {
               if(array_key_exists('subcategory_id',$b)){ $fields[]='subcategory_id=?'; $vals[]=($b['subcategory_id']!==''?(int)$b['subcategory_id']:null); }
               if(array_key_exists('payment_method_id',$b)){ $fields[]='payment_method_id=?'; $vals[]=($b['payment_method_id']!==''?(int)$b['payment_method_id']:null); }
               if ($this->hasColumn($dbh,'expenses','count_weekly') && array_key_exists('count_weekly',$b)) { $fields[]='count_weekly=?'; $vals[]=(int)!!$b['count_weekly']; }
+              if ($this->hasColumn($dbh,'expenses','recurring_start') && array_key_exists('recurring_start',$b)) { $fields[]='recurring_start=?'; $vals[]=(preg_match('/^\d{4}-\d{2}-\d{2}$/',$b['recurring_start']??'')?$b['recurring_start']:null); }
+              if ($this->hasColumn($dbh,'expenses','recurring_end') && array_key_exists('recurring_end',$b)) { $fields[]='recurring_end=?'; $vals[]=(($b['recurring_end']??'')!=='' && preg_match('/^\d{4}-\d{2}-\d{2}$/',$b['recurring_end'])?$b['recurring_end']:null); }
+              if ($this->hasColumn($dbh,'expenses','recurring_forever') && array_key_exists('recurring_forever',$b)) { $fields[]='recurring_forever=?'; $vals[]=(int)!!$b['recurring_forever']; }
+              if ($this->hasColumn($dbh,'expenses','recurring_template')) {
+                // toggle template flag based on whether it is currently recurring
+                $isRecurring = (isset($b['recurring_start']) || isset($b['recurring_end']) || isset($b['recurring_forever'])) ? ((isset($b['recurring_forever']) && $b['recurring_forever']) || !empty($b['recurring_start']) || !empty($b['recurring_end'])) : null;
+                if ($isRecurring !== null) { $fields[]='recurring_template=?'; $vals[]=$isRecurring?1:0; }
+              }
               if(!$fields) return $this->json(['error'=>'No fields'],400);
               $sql='UPDATE expenses SET '.implode(',', $fields).', updated_at=NOW() WHERE tenant_id=? AND id=?';
               $vals[]=$tenantId; $vals[]=$id; $st=$dbh->prepare($sql); $st->execute($vals);
@@ -131,6 +161,70 @@ class essentials extends Controller {
       $st = $dbh->query("SHOW COLUMNS FROM `{$table}` LIKE " . $dbh->quote($column));
       return (bool)$st->fetch();
     } catch (Throwable $e) { return false; }
+  }
+
+  // Auto-generate one expense on the 1st of the current month for each recurring template
+  private function generateRecurring(PDO $dbh, int $tenantId): void {
+    try {
+      // ensure needed columns exist
+      foreach ([
+        'recurring_start DATE NULL',
+        'recurring_end DATE NULL',
+        'recurring_forever TINYINT(1) NOT NULL DEFAULT 0',
+        'recurring_template TINYINT(1) NOT NULL DEFAULT 0',
+        'recurring_last_ym CHAR(7) NULL'
+      ] as $def) {
+        $parts = explode(' ', $def, 2); $col = $parts[0];
+        if (!$this->hasColumn($dbh,'expenses',$col)) {
+          try { $dbh->exec("ALTER TABLE expenses ADD COLUMN {$def}"); } catch (Throwable $e) { /* ignore */ }
+        }
+      }
+
+      $ym = date('Y-m');
+      $first = $ym.'-01';
+      $lastDay = date('Y-m-t');
+
+      // select recurring templates for this tenant that need generation for this month
+      $sql = "SELECT * FROM expenses
+              WHERE tenant_id=? AND recurring_template=1
+                AND (recurring_last_ym IS NULL OR recurring_last_ym <> ?)
+                AND (recurring_start IS NULL OR recurring_start <= ?)
+                AND (
+                      recurring_forever=1
+                   OR recurring_end IS NULL
+                   OR recurring_end >= ?
+                )
+              ORDER BY id";
+      $st = $dbh->prepare($sql);
+      $st->execute([$tenantId,$ym,$lastDay,$first]);
+      $templates = $st->fetchAll();
+      if (!$templates) return;
+
+      $ins = $dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,created_at,updated_at)
+                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+      $upd = $dbh->prepare('UPDATE expenses SET recurring_last_ym=? WHERE id=? AND tenant_id=?');
+
+      foreach ($templates as $t) {
+        // Insert the instance for the current month (on 1st day)
+        $ins->execute([
+          (int)$t['tenant_id'],
+          (int)($t['user_id'] ?? 0),
+          $first,
+          (int)$t['amount_cents'],
+          $t['currency'],
+          (int)$t['category_id'],
+          $t['subcategory_id']!==null ? (int)$t['subcategory_id'] : null,
+          $t['payment_method_id']!==null ? (int)$t['payment_method_id'] : null,
+          $t['merchant'],
+          $t['note'],
+          isset($t['count_weekly']) ? (int)$t['count_weekly'] : 1
+        ]);
+        // Mark template as generated for this month
+        $upd->execute([$ym,(int)$t['id'],$tenantId]);
+      }
+    } catch (Throwable $e) {
+      // swallow errors to avoid blocking UI; admin can check logs
+    }
   }
 
   // GET /essentials
