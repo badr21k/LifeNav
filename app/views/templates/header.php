@@ -134,7 +134,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       }
       .nav-link:hover {
         color: var(--primary);
-        background: var(--primary-light);
+        background: transparent;
         transform: translateY(-1px);
       }
       .nav-link:hover i {
@@ -142,7 +142,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       }
       .nav-link.active {
         color: var(--primary);
-        background: var(--primary-light);
+        background: transparent;
         font-weight: 700;
       }
       .nav-link.active::after {
@@ -177,9 +177,9 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         align-items: center;
         gap: 0.75rem;
         font-weight: 600;
-        padding: 0.5rem 1rem;
+        padding: 0.5rem 0.875rem;
         border: 1px solid var(--border);
-        border-radius: 50px;
+        border-radius: var(--radius-md);
         background: var(--card);
         color: var(--text);
         transition: var(--transition);
@@ -260,21 +260,9 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         .nav-item {
           margin-bottom: 0.5rem;
         }
-        .nav-link {
-          padding: 1rem 1.25rem;
-          border-radius: var(--radius-md);
-          border-left: 3px solid transparent;
-        }
-        .nav-link.active {
-          border-left-color: var(--primary);
-          background: var(--primary-light);
-        }
-        .user-chip-mobile {
-          width: 100%;
-          justify-content: center;
-          margin: 1rem 0;
-          padding: 1rem;
-        }
+        .nav-link { padding: 1rem 1.25rem; border-radius: var(--radius-md); }
+        .nav-link.active { background: transparent; }
+        .user-chip-mobile { width: 100%; justify-content: center; margin: 0.5rem 0 0.25rem; }
       }
       @media (min-width: 992px) {
         .navbar .container-fluid {
@@ -387,105 +375,3 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     </div>
   </div>
 </nav>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
-        crossorigin="anonymous"></script>
-<script>
-  (function(){
-    const key = 'lifenav_theme';
-    try {
-      let saved = localStorage.getItem(key);
-      if (!saved) {
-        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        saved = prefersDark ? 'dark' : 'light';
-        localStorage.setItem(key, saved);
-      }
-      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-    } catch(_) {}
-    window.toggleTheme = function() {
-      const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      if (cur === 'light') document.documentElement.removeAttribute('data-theme');
-      else document.documentElement.setAttribute('data-theme', 'dark');
-      try { localStorage.setItem(key, cur); } catch(_) {}
-    };
-    document.addEventListener('DOMContentLoaded', function() {
-      const navCollapse = document.getElementById('navbarSupportedContent');
-      const toggler = document.querySelector('.navbar-toggler');
-      const backdrop = document.getElementById('mobileMenuBackdrop');
-      if (!navCollapse) return;
-      const bsCollapse = new bootstrap.Collapse(navCollapse, { toggle: false });
-      function toggleBackdrop(show) {
-        if (backdrop) {
-          backdrop.classList.toggle('show', show);
-        }
-      }
-      navCollapse.addEventListener('click', function(e) {
-        const link = e.target.closest('.nav-link');
-        if (link && window.innerWidth < 992) {
-          e.preventDefault();
-          const href = link.getAttribute('href');
-          setTimeout(() => {
-            bsCollapse.hide();
-            toggleBackdrop(false);
-            window.location.href = href;
-          }, 150);
-        }
-      });
-      if (backdrop) {
-        backdrop.addEventListener('click', function() {
-          bsCollapse.hide();
-          toggleBackdrop(false);
-        });
-      }
-      navCollapse.addEventListener('show.bs.collapse', function() {
-        toggleBackdrop(true);
-        document.body.style.overflow = 'hidden';
-      });
-      navCollapse.addEventListener('hide.bs.collapse', function() {
-        toggleBackdrop(false);
-        document.body.style.overflow = '';
-      });
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && navCollapse.classList.contains('show')) {
-          bsCollapse.hide();
-          toggleBackdrop(false);
-        }
-      });
-      window.addEventListener('resize', function() {
-        if (window.innerWidth >= 992 && navCollapse.classList.contains('show')) {
-          bsCollapse.hide();
-          toggleBackdrop(false);
-        }
-      });
-      function initDropdowns() {
-        const dropdowns = document.querySelectorAll('.dropdown');
-        dropdowns.forEach(dropdown => {
-          const toggle = dropdown.querySelector('.dropdown-toggle');
-          const menu = dropdown.querySelector('.dropdown-menu');
-          if (toggle && menu) {
-            toggle.addEventListener('keydown', function(e) {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                const bsDropdown = bootstrap.Dropdown.getInstance(toggle) || new bootstrap.Dropdown(toggle);
-                bsDropdown.toggle();
-              }
-            });
-            menu.addEventListener('click', function(e) {
-              if (e.target.closest('.dropdown-item') && window.innerWidth < 992) {
-                const bsDropdown = bootstrap.Dropdown.getInstance(toggle);
-                if (bsDropdown) bsDropdown.hide();
-                if (navCollapse.classList.contains('show')) {
-                  bsCollapse.hide();
-                  toggleBackdrop(false);
-                }
-              }
-            });
-          }
-        });
-      }
-      initDropdowns();
-    });
-  })();
-</script>
-</body>
-</html>
