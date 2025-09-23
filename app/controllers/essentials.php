@@ -160,7 +160,7 @@ class essentials extends Controller {
     $st->execute([$tenantId]);
     $rows = $st->fetchAll();
 
-    $title = 'Expenses (read-only)';
+    $title = 'Spending (read-only)';
     include 'app/views/essentials/list.php';
   }
   // moved helpers above
@@ -312,7 +312,7 @@ class essentials extends Controller {
     }
 
     // render
-    $title = 'Essentials (Expenses)';
+    $title = 'Spending';
     include 'app/views/essentials/index.php';
   }
 
@@ -344,7 +344,7 @@ class essentials extends Controller {
     } else {
       $pms = $dbh->query("SELECT * FROM payment_methods WHERE active=1 ORDER BY id")->fetchAll();
     }
-    $title = 'Add Expense';
+    $title = 'Add Spending';
     include 'app/views/essentials/create.php';
   }
 
@@ -417,7 +417,7 @@ class essentials extends Controller {
     $st = $dbh->prepare("SELECT t.* FROM tags t INNER JOIN expense_tags et ON et.tag_id=t.id WHERE et.expense_id=? ORDER BY t.name");
     $st->execute([$id]); $rowTags=$st->fetchAll();
 
-    $title = 'Edit Expense';
+    $title = 'Edit Spending';
     include 'app/views/essentials/edit.php';
   }
 
