@@ -134,7 +134,7 @@
   async function init(){
     try {
       try { await fetch('/overview_api/save', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month: ym }) }); } catch(_e){}
-      const res = await getJSON(`/overview_api/get?month=${encodeURIComponent(ym)}`);
+      const res = await getJSON(`/overview_api/get/${encodeURIComponent(ym)}`);
       const data = res?.data || {};
       const currency = data.currency || 'CAD';
 

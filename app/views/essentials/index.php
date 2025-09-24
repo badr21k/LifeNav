@@ -1041,7 +1041,12 @@ function App() {
                     const list = await apiGet('/finance/api/currencies');
                     if (!mounted) return; setState(prev=>({ ...prev, currencies: Array.isArray(list) ? list : [] }));
                 } catch(_e){}
-                const res = await apiGet(`/overview_api/get?month=${encodeURIComponent(ym)}`);
+                let res;
+                try {
+                    res = await apiGet(`/overview_api/get/${encodeURIComponent(ym)}`);
+                } catch(_e) {
+                    try { await apiSend('POST','/overview_api/save', { month: ym }); res = await apiGet(`/overview_api/get/${encodeURIComponent(ym)}`); } catch(__e) { res = null; }
+                }
                 if (!mounted) return;
                 setState(prev => ({ ...prev, paycheck: (res?.data?.totals?.paycheck_month||0) }));
             } catch (e) {
@@ -1052,10 +1057,15 @@ function App() {
         financeChannelRef.current = new BroadcastChannel('lifenav_finance');
         financeChannelRef.current.onmessage = (ev) => {
             if (ev?.data?.type === 'pay_update' && ev?.data?.month === ym) {
-                apiGet(`/overview_api/get?month=${encodeURIComponent(ym)}`).then(r=>{
-                    const p = r?.data?.totals?.paycheck_month || 0;
-                    setState(prev => ({ ...prev, paycheck: p }));
-                }).catch(()=>{});
+                (async ()=>{
+                    try {
+                        const r = await apiGet(`/overview_api/get/${encodeURIComponent(ym)}`);
+                        const p = r?.data?.totals?.paycheck_month || 0;
+                        setState(prev => ({ ...prev, paycheck: p }));
+                    } catch(_e) {
+                        try { await apiSend('POST','/overview_api/save', { month: ym }); const r = await apiGet(`/overview_api/get/${encodeURIComponent(ym)}`); const p = r?.data?.totals?.paycheck_month || 0; setState(prev => ({ ...prev, paycheck: p })); } catch(__e) {}
+                    }
+                })();
             }
         };
         return () => { mounted = false; try{ financeChannelRef.current?.close(); }catch(_e){} };

@@ -14,10 +14,10 @@ class overview_api extends Controller {
       user_id INT NOT NULL,
       year_month CHAR(7) NOT NULL,
       currency VARCHAR(8) NULL,
-      totals_json JSON NULL,
-      categories_normal_json JSON NULL,
-      categories_travel_json JSON NULL,
-      kpis_json JSON NULL,
+      totals_json LONGTEXT NULL,
+      categories_normal_json LONGTEXT NULL,
+      categories_travel_json LONGTEXT NULL,
+      kpis_json LONGTEXT NULL,
       updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY uniq_tenant_user_month (tenant_id,user_id,year_month)
     )');
@@ -39,12 +39,14 @@ class overview_api extends Controller {
     return 'CAD';
   }
 
-  public function save() {
+  public function save($monthParam=null) {
     $this->requireAuth();
     try {
       $dbh = db_connect(); $this->ensureTable($dbh);
       $tenantId=$this->tenantId(); $userId=$this->userId();
-      $b=$this->bodyJson(); $ym = isset($b['month']) && preg_match('/^\d{4}-\d{2}$/',$b['month']) ? $b['month'] : date('Y-m');
+      $b=$this->bodyJson();
+      $ymBody = isset($b['month']) && preg_match('/^\d{4}-\d{2}$/',$b['month']) ? $b['month'] : null;
+      $ym = $monthParam && preg_match('/^\d{4}-\d{2}$/',$monthParam) ? $monthParam : ($ymBody ?: date('Y-m'));
       $start=$ym.'-01'; $end=date('Y-m-d', strtotime($start.' +1 month'));
 
       // Currency
@@ -147,7 +149,7 @@ class overview_api extends Controller {
 
       // UPSERT row
       $st=$dbh->prepare('INSERT INTO monthly_summaries (tenant_id,user_id,year_month,currency,totals_json,categories_normal_json,categories_travel_json,kpis_json)
-                         VALUES (?,?,?,?,CAST(? AS JSON),CAST(? AS JSON),CAST(? AS JSON),CAST(? AS JSON))
+                         VALUES (?,?,?,?,?,?,?,?)
                          ON DUPLICATE KEY UPDATE currency=VALUES(currency), totals_json=VALUES(totals_json), categories_normal_json=VALUES(categories_normal_json), categories_travel_json=VALUES(categories_travel_json), kpis_json=VALUES(kpis_json)');
       $st->execute([$tenantId,$userId,$ym,$currency, json_encode($totals), json_encode($catsNOut), json_encode($catsTOut), json_encode($kpis)]);
 
@@ -157,11 +159,11 @@ class overview_api extends Controller {
     }
   }
 
-  public function get() {
+  public function get($monthParam=null) {
     $this->requireAuth();
     try {
       $dbh=db_connect(); $this->ensureTable($dbh); $tenantId=$this->tenantId(); $userId=$this->userId();
-      $month = trim($_GET['month'] ?? ''); if (!preg_match('/^\d{4}-\d{2}$/',$month)) $month = date('Y-m');
+      $month = $monthParam && preg_match('/^\d{4}-\d{2}$/',$monthParam) ? $monthParam : trim($_GET['month'] ?? ''); if (!preg_match('/^\d{4}-\d{2}$/',$month)) $month = date('Y-m');
       $st=$dbh->prepare('SELECT * FROM monthly_summaries WHERE tenant_id=? AND user_id=? AND year_month=? LIMIT 1');
       $st->execute([$tenantId,$userId,$month]); $row=$st->fetch();
       if (!$row) return $this->json(['ok'=>true,'data'=>[
