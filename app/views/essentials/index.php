@@ -1731,7 +1731,11 @@ function App() {
                         </div>
                         <div className="summary-item">
                             <div className="summary-label">Weekly Spent / Budget</div>
-                            <div className="summary-value">{baseSymbol}{summary.weeklySpent.toFixed(2)} / {baseSymbol}{summary.weeklyBudget.toFixed(2)}</div>
+                            <div className="summary-value" data-sv-exempt>
+                                <span className="sensitive-value">{baseSymbol}{summary.weeklySpent.toFixed(2)}</span>
+                                {" / "}
+                                <span className="sv-exempt">{baseSymbol}{summary.weeklyBudget.toFixed(2)}</span>
+                            </div>
                             <div className="progress-bar">
                                 <div className="progress-bar-fill" style={{ width: `${Math.min((summary.weeklySpent / (summary.weeklyBudget || 1)) * 100, 100)}%` }}></div>
                             </div>

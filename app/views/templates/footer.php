@@ -78,9 +78,15 @@
       var showValues = false;
       try { showValues = localStorage.getItem(SHOW_KEY) === 'true'; } catch(_) {}
       function applyShowValues(flag){
-        var html = document.documentElement;
-        if (flag) html.classList.remove('values-hidden'); else html.classList.add('values-hidden');
+        // flag === true => show values (remove masks)
         try { localStorage.setItem(SHOW_KEY, flag ? 'true' : 'false'); } catch(_) {}
+        try {
+          document.querySelectorAll('.sensitive-value').forEach(function(el){
+            if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
+            if (flag) el.classList.remove('sv-masked');
+            else el.classList.add('sv-masked');
+          });
+        } catch(_) {}
         // Update header button states
         var btn = document.getElementById('toggle-values-btn');
         if (btn){
@@ -124,7 +130,19 @@
       markSensitive(document);
       // Observe dynamic content changes (React renders)
       try {
-        var obs = new MutationObserver(function(muts){ muts.forEach(function(m){ if (m.type==='childList') markSensitive(m.target); }); });
+        var obs = new MutationObserver(function(muts){
+          muts.forEach(function(m){
+            if (m.type==='childList') {
+              markSensitive(m.target);
+              // Apply current mask state to new nodes
+              var current = localStorage.getItem(SHOW_KEY) === 'true';
+              document.querySelectorAll('.sensitive-value').forEach(function(el){
+                if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
+                if (current) el.classList.remove('sv-masked'); else el.classList.add('sv-masked');
+              });
+            }
+          });
+        });
         obs.observe(document.body, { childList: true, subtree: true });
       } catch(_) {}
 

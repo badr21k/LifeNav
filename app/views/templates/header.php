@@ -51,19 +51,11 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     <style>
       /* Disable transitions during initial theme application to prevent flicker */
       html.theme-init *, html.theme-init *::before, html.theme-init *::after { transition: none !important; }
-      /* Sensitive values masking. Apply when html has .values-hidden */
-      html.values-hidden .sensitive-value:not(.sv-exempt):not([data-sv-exempt]) {
-        color: transparent !important;
-        text-shadow: none !important;
+      /* Sensitive values mask styling (no blur, no star). When masked via JS, element gets sv-masked */
+      .sv-masked {
+        color: var(--text-light) !important;
+        letter-spacing: 0.02em;
         user-select: none;
-        position: relative;
-      }
-      html.values-hidden .sensitive-value:not(.sv-exempt):not([data-sv-exempt])::after {
-        content: '*';
-        position: absolute;
-        inset: 0;
-        display: inline;
-        color: var(--text);
       }
       :root {
         --primary: #2c6b5f;
