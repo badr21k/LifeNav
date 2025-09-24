@@ -1,7 +1,3 @@
-              // ensure mode column exists (normal/travel)
-              if (!$this->hasColumn($dbh,'expenses','mode')) {
-                try { $dbh->exec("ALTER TABLE expenses ADD COLUMN mode ENUM('normal','travel') NOT NULL DEFAULT 'normal' AFTER user_id"); } catch (Throwable $e) { /* ignore */ }
-              }
 <?php
 class essentials extends Controller {
 

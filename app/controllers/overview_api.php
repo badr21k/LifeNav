@@ -2,7 +2,7 @@
 
 class overview_api extends Controller {
   private function requireAuth() { if (!isset($_SESSION['auth'])) { header('Location: /login'); exit; } }
-  private function tenantId(): int { return (int)($_SESSION['auth']['tenant_id'] ?? 0); }
+  private function tenantId(): int { return (int)($_SESSION['auth']['tenant_id'] ?? 1); }
   private function userId(): int { return (int)($_SESSION['auth']['id'] ?? 0); }
   private function json($data, int $code=200): void { http_response_code($code); header('Content-Type: application/json'); echo json_encode($data); exit; }
   private function bodyJson(): array { $raw=file_get_contents('php://input'); $j=json_decode($raw,true); return is_array($j)?$j:[]; }
