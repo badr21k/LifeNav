@@ -36,8 +36,13 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             saved = sysDark ? 'dark' : 'light';
           }
-          if (saved === 'dark') { document.documentElement.setAttribute('data-theme','dark'); document.documentElement.style.colorScheme='dark'; }
-          else { document.documentElement.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light'; }
+          if (saved === 'dark' || saved === 'classic-dark') {
+            document.documentElement.setAttribute('data-theme', saved);
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.removeAttribute('data-theme');
+            document.documentElement.style.colorScheme = 'light';
+          }
           // Suppress transitions during first paint; footer removes this class on DOMContentLoaded
           document.documentElement.classList.add('theme-init');
         } catch(_) {}
@@ -81,6 +86,20 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --shadow-sm: 0 2px 6px rgba(0,0,0,.5);
         --shadow-md: 0 12px 28px rgba(0,0,0,.6);
       }
+      /* Classic neutral dark inspired by native OS dark modes */
+      [data-theme="classic-dark"] {
+        --primary: #3b82f6; /* calm blue */
+        --primary-dark: #2563eb;
+        --primary-light: rgba(59,130,246,0.14);
+        --text: #e6e7eb;
+        --text-light: #a1a1aa;
+        --card: #1f2125;
+        --card-rgb: 31, 33, 37;
+        --background: #111315;
+        --border: #2a2d31;
+        --shadow-sm: 0 2px 6px rgba(0,0,0,.55);
+        --shadow-md: 0 12px 28px rgba(0,0,0,.65);
+      }
       * {
         box-sizing: border-box;
       }
@@ -107,7 +126,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         transition: var(--transition);
         padding: 0.5rem 0;
       }
-      [data-theme="dark"] .navbar-modern {
+      [data-theme="dark"] .navbar-modern,
+      [data-theme="classic-dark"] .navbar-modern {
         background: rgba(var(--card-rgb), 0.88) !important;
         backdrop-filter: saturate(180%) blur(10px);
       }
@@ -170,6 +190,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       }
       .nav-link:hover { color: var(--primary); background: transparent; transform: translateY(-1px); }
       [data-theme="dark"] .nav-link:hover { background: rgba(111,213,199,0.08); }
+      [data-theme="classic-dark"] .nav-link:hover { background: rgba(59,130,246,0.08); }
       .nav-link:hover i {
         transform: scale(1.1);
       }
@@ -189,8 +210,10 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         background: var(--primary);
         border-radius: 2px;
       }
-      [data-theme="dark"] .navbar-modern .nav-link { opacity: .95; }
-      [data-theme="dark"] .navbar-modern .nav-link.active { opacity: 1; }
+      [data-theme="dark"] .navbar-modern .nav-link,
+      [data-theme="classic-dark"] .navbar-modern .nav-link { opacity: .95; }
+      [data-theme="dark"] .navbar-modern .nav-link.active,
+      [data-theme="classic-dark"] .navbar-modern .nav-link.active { opacity: 1; }
       .navbar-toggler {
         border: 1px solid var(--border);
         padding: 0.5rem 0.75rem;
@@ -221,6 +244,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       }
       .user-chip:hover { border-color: var(--primary); background: var(--primary-light); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
       [data-theme="dark"] .user-chip:hover { background: rgba(111,213,199,0.12); }
+      [data-theme="classic-dark"] .user-chip:hover { background: rgba(59,130,246,0.12); }
       .user-chip i {
         opacity: 0.9;
         font-size: 1.1rem;
@@ -234,7 +258,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         padding: 0.5rem;
         min-width: 200px;
       }
-      [data-theme="dark"] .dropdown-menu { background: var(--card); border-color: var(--border); }
+      [data-theme="dark"] .dropdown-menu,
+      [data-theme="classic-dark"] .dropdown-menu { background: var(--card); border-color: var(--border); }
       .dropdown-item {
         padding: 0.75rem 1rem;
         border-radius: var(--radius-sm);
