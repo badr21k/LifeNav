@@ -58,7 +58,6 @@
         });
       } catch(_) {}
     });
-    };
     document.addEventListener('DOMContentLoaded', function(){
       var navEl = document.getElementById('navbarSupportedContent');
       var toggler = document.querySelector('.navbar-toggler');
