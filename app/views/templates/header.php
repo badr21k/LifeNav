@@ -122,6 +122,17 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         text-decoration: none;
         transition: var(--transition);
       }
+      .navbar-modern .navbar-brand,
+      .navbar-modern .nav-link,
+      .navbar-modern .dropdown-item,
+      .navbar-modern .user-chip {
+        color: var(--text) !important;
+      }
+      .navbar-modern i,
+      .navbar-modern svg {
+        color: currentColor;
+        fill: currentColor;
+      }
       .brand-icon {
         width: 36px;
         height: 36px;
@@ -178,6 +189,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         background: var(--primary);
         border-radius: 2px;
       }
+      [data-theme="dark"] .navbar-modern .nav-link { opacity: .95; }
+      [data-theme="dark"] .navbar-modern .nav-link.active { opacity: 1; }
       .navbar-toggler {
         border: 1px solid var(--border);
         padding: 0.5rem 0.75rem;
@@ -226,7 +239,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         padding: 0.75rem 1rem;
         border-radius: var(--radius-sm);
         font-weight: 500;
-        color: var(--text);
+        color: var(--text) !important;
         transition: var(--transition);
         display: flex;
         align-items: center;
@@ -234,7 +247,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       }
       .dropdown-item:hover, .dropdown-item:focus {
         background: var(--primary-light);
-        color: var(--primary);
+        color: var(--primary) !important;
         transform: translateX(5px);
       }
       .mobile-menu-backdrop {
