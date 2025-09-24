@@ -1066,7 +1066,7 @@
         <header class="header">
             <div class="controls">
                 <div class="currency-selector-wrapper">
-                    <input id="currency-search" class="currency-typeahead" placeholder="Search currency (code or name)…" aria-label="Search currency" autocomplete="off" />
+                    <input id="currency-search" class="currency-typeahead" placeholder="" aria-label="Search currency" autocomplete="off" />
                     <div id="currency-dropdown" class="currency-dropdown" role="listbox" aria-label="Currencies"></div>
                     <select id="base-currency-selector" class="currency-selector" aria-label="Base currency">
                         <option value="USD">USD</option>
