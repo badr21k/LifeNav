@@ -400,8 +400,15 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
               <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
             </button>
             <ul class="dropdown-menu w-100" aria-labelledby="userMenuMobile">
-              <li><button class="dropdown-item" type="button" onclick="toggleTheme()">
-                <i class="fa-solid fa-moon"></i>Toggle Dark Mode
+              <li><h6 class="dropdown-header">Theme</h6></li>
+              <li><button class="dropdown-item" type="button" onclick="setTheme('light')">
+                <i class="fa-solid fa-sun"></i>Light
+              </button></li>
+              <li><button class="dropdown-item" type="button" onclick="setTheme('dark')">
+                <i class="fa-solid fa-moon"></i>Teal Dark
+              </button></li>
+              <li><button class="dropdown-item" type="button" onclick="setTheme('classic-dark')">
+                <i class="fa-solid fa-moon"></i>Classic Dark
               </button></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger" href="/logout">
@@ -420,8 +427,15 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
         </button>
         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-          <li><button class="dropdown-item" type="button" onclick="toggleTheme()">
-            <i class="fa-solid fa-moon"></i>Toggle Dark Mode
+          <li><h6 class="dropdown-header">Theme</h6></li>
+          <li><button class="dropdown-item" type="button" onclick="setTheme('light')">
+            <i class="fa-solid fa-sun"></i>Light
+          </button></li>
+          <li><button class="dropdown-item" type="button" onclick="setTheme('dark')">
+            <i class="fa-solid fa-moon"></i>Teal Dark
+          </button></li>
+          <li><button class="dropdown-item" type="button" onclick="setTheme('classic-dark')">
+            <i class="fa-solid fa-moon"></i>Classic Dark
           </button></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item text-danger" href="/logout">
