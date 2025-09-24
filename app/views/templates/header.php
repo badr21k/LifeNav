@@ -275,6 +275,9 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         color: var(--primary) !important;
         transform: translateX(5px);
       }
+      /* Active theme checkmark */
+      .dropdown-item .check { margin-left: auto; opacity: 0; transition: opacity .15s ease; }
+      .dropdown-item.active .check { opacity: 1; }
       .mobile-menu-backdrop {
         position: fixed;
         top: var(--header-h);
@@ -401,14 +404,14 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             </button>
             <ul class="dropdown-menu w-100" aria-labelledby="userMenuMobile">
               <li><h6 class="dropdown-header">Theme</h6></li>
-              <li><button class="dropdown-item" type="button" onclick="setTheme('light')">
-                <i class="fa-solid fa-sun"></i>Light
+              <li><button id="m-theme-light" class="dropdown-item" type="button" onclick="setTheme('light')">
+                <i class="fa-solid fa-sun"></i>Light <i class="fa-solid fa-check check"></i>
               </button></li>
-              <li><button class="dropdown-item" type="button" onclick="setTheme('dark')">
-                <i class="fa-solid fa-moon"></i>Teal Dark
+              <li><button id="m-theme-dark" class="dropdown-item" type="button" onclick="setTheme('dark')">
+                <i class="fa-solid fa-moon"></i>Teal Dark <i class="fa-solid fa-check check"></i>
               </button></li>
-              <li><button class="dropdown-item" type="button" onclick="setTheme('classic-dark')">
-                <i class="fa-solid fa-moon"></i>Classic Dark
+              <li><button id="m-theme-classic-dark" class="dropdown-item" type="button" onclick="setTheme('classic-dark')">
+                <i class="fa-solid fa-moon"></i>Classic Dark <i class="fa-solid fa-check check"></i>
               </button></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger" href="/logout">
@@ -428,14 +431,14 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         </button>
         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
           <li><h6 class="dropdown-header">Theme</h6></li>
-          <li><button class="dropdown-item" type="button" onclick="setTheme('light')">
-            <i class="fa-solid fa-sun"></i>Light
+          <li><button id="theme-light" class="dropdown-item" type="button" onclick="setTheme('light')">
+            <i class="fa-solid fa-sun"></i>Light <i class="fa-solid fa-check check"></i>
           </button></li>
-          <li><button class="dropdown-item" type="button" onclick="setTheme('dark')">
-            <i class="fa-solid fa-moon"></i>Teal Dark
+          <li><button id="theme-dark" class="dropdown-item" type="button" onclick="setTheme('dark')">
+            <i class="fa-solid fa-moon"></i>Teal Dark <i class="fa-solid fa-check check"></i>
           </button></li>
-          <li><button class="dropdown-item" type="button" onclick="setTheme('classic-dark')">
-            <i class="fa-solid fa-moon"></i>Classic Dark
+          <li><button id="theme-classic-dark" class="dropdown-item" type="button" onclick="setTheme('classic-dark')">
+            <i class="fa-solid fa-moon"></i>Classic Dark <i class="fa-solid fa-check check"></i>
           </button></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item text-danger" href="/logout">
