@@ -21,6 +21,10 @@ class overview_api extends Controller {
       updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY uniq_tenant_user_month (tenant_id,user_id,year_month)
     )');
+    // helpful indexes on source tables (idempotent, ignore failures)
+    try { $dbh->exec('CREATE INDEX idx_expenses_tenant_date ON expenses(tenant_id, date)'); } catch (Throwable $e) {}
+    try { $dbh->exec('CREATE INDEX idx_income_tenant_date ON income(tenant_id, date)'); } catch (Throwable $e) {}
+    try { $dbh->exec('CREATE INDEX idx_payruns_tenant_period_end ON pay_runs(tenant_id, period_end)'); } catch (Throwable $e) {}
   }
 
   private function tableExists(PDO $dbh, string $table): bool {
@@ -52,9 +56,21 @@ class overview_api extends Controller {
       // Currency
       $currency = $this->defaultCurrency($dbh,$tenantId);
 
-      // Income (month): sum of pay_runs.net_cents within month
+      // Income (month): sum of income.amount_cents and pay_runs.net_cents within month
+      $income_cents = 0;
+      if ($this->tableExists($dbh,'income')) {
+        // try cents column first
+        if ($this->hasColumn($dbh,'income','amount_cents')) {
+          $st=$dbh->prepare('SELECT COALESCE(SUM(amount_cents),0) s FROM income WHERE tenant_id=? AND date>=? AND date<?');
+          $st->execute([$tenantId,$start,$end]); $income_cents += (int)($st->fetch()['s'] ?? 0);
+        } elseif ($this->hasColumn($dbh,'income','amount')) {
+          $st=$dbh->prepare('SELECT COALESCE(SUM(amount),0) s FROM income WHERE tenant_id=? AND date>=? AND date<?');
+          $st->execute([$tenantId,$start,$end]); $income_cents += (int)round(((float)($st->fetch()['s'] ?? 0))*100);
+        }
+      }
       $st=$dbh->prepare('SELECT COALESCE(SUM(net_cents),0) s FROM pay_runs WHERE tenant_id=? AND period_end>=? AND period_end<?');
-      $st->execute([$tenantId,$start,$end]); $income_cents=(int)($st->fetch()['s'] ?? 0);
+      $st->execute([$tenantId,$start,$end]); $payruns_net_cents=(int)($st->fetch()['s'] ?? 0);
+      $income_cents += $payruns_net_cents;
 
       // Spending (month): sum of expenses.amount_cents within month with mode split (if available)
       $spending_cents=0; $weeklySpentCents=0; $weeklySpentTravelCents=0; $catsNormal=[]; $catsTravel=[]; $totalNormalCents=0; $totalTravelCents=0;
@@ -90,8 +106,20 @@ class overview_api extends Controller {
         }
       }
 
-      $net_cents = $income_cents - $spending_cents;
-      $paycheck_cents = $income_cents; // mapping per spec
+      // Debts: subtract monthly minimums (best-effort)
+      $debts_cents = 0;
+      if ($this->tableExists($dbh,'debts')) {
+        if ($this->hasColumn($dbh,'debts','min_payment_cents')) {
+          $ds=$dbh->prepare('SELECT COALESCE(SUM(min_payment_cents),0) s FROM debts WHERE tenant_id=?');
+          $ds->execute([$tenantId]); $debts_cents = (int)($ds->fetch()['s'] ?? 0);
+        } elseif ($this->hasColumn($dbh,'debts','min_payment')) {
+          $ds=$dbh->prepare('SELECT COALESCE(SUM(min_payment),0) s FROM debts WHERE tenant_id=?');
+          $ds->execute([$tenantId]); $debts_cents = (int)round(((float)($ds->fetch()['s'] ?? 0))*100);
+        }
+      }
+      $net_cents = $income_cents - $spending_cents - $debts_cents;
+      // paycheck = net from pay_runs only
+      $paycheck_cents = $payruns_net_cents;
 
       // KPIs
       $weekly_budget_normal_cents = null; $weekly_budget_travel_cents = null;
