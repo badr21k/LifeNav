@@ -349,6 +349,30 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         transition: opacity .2s ease;
       }
 
+      /* --- Dark Theme Text Fixes (global) --- */
+      [data-theme="dark"], [data-theme="classic-dark"] {
+        --bs-body-color: var(--text);
+      }
+      [data-theme="dark"] body, [data-theme="classic-dark"] body { color: var(--text); }
+      [data-theme="dark"] a, [data-theme="classic-dark"] a { color: var(--text); }
+      [data-theme="dark"] .navbar-brand, [data-theme="classic-dark"] .navbar-brand { color: var(--text) !important; }
+      [data-theme="dark"] .nav-link, [data-theme="classic-dark"] .nav-link { color: var(--text) !important; }
+      [data-theme="dark"] .dropdown-item, [data-theme="classic-dark"] .dropdown-item { color: var(--text) !important; }
+      [data-theme="dark"] .user-chip, [data-theme="classic-dark"] .user-chip { color: var(--text) !important; }
+      [data-theme="dark"] .text-muted, [data-theme="classic-dark"] .text-muted,
+      [data-theme="dark"] .text-secondary, [data-theme="classic-dark"] .text-secondary { color: var(--text-light) !important; }
+      [data-theme="dark"] .text-dark, [data-theme="classic-dark"] .text-dark { color: var(--text) !important; }
+      [data-theme="dark"] table, [data-theme="classic-dark"] table,
+      [data-theme="dark"] th, [data-theme="classic-dark"] th,
+      [data-theme="dark"] td, [data-theme="classic-dark"] td { color: var(--text); }
+      [data-theme="dark"] .form-control, [data-theme="classic-dark"] .form-control,
+      [data-theme="dark"] .form-select, [data-theme="classic-dark"] .form-select {
+        background-color: var(--card);
+        color: var(--text);
+        border-color: var(--border);
+      }
+      [data-theme="dark"] .form-control::placeholder, [data-theme="classic-dark"] .form-control::placeholder { color: var(--text-light); }
+
       .mobile-menu-backdrop {
         position: fixed;
         top: var(--header-h);
