@@ -2726,13 +2726,14 @@
                 if (id) await apiSend('PUT', `/finance/api/payruns/${encodeURIComponent(id)}`, payload);
                 else await apiSend('POST', '/finance/api/payruns', payload);
                 await loadData(); updateUI();
+                try { await apiSend('POST','/overview_api/save', { month: new Date().toISOString().slice(0,7) }); } catch(_e){}
                 showToast(id?'Pay run updated':'Pay run created','success');
                 try{ financeChannel.postMessage({type:'pay_update', month: new Date().toISOString().slice(0,7)}); }catch(_e){}
             } catch(e){ showToast(e.message||'Failed', 'error'); } finally { if(btn){ btn.classList.remove('loading'); btn.disabled = false; } }
         }
 
         async function deletePayRun(id) {
-            try{ await apiSend('DELETE', `/finance/api/payruns/${encodeURIComponent(id)}`); await loadData(); updateUI(); showToast('Pay run deleted','success'); try{ financeChannel.postMessage({type:'pay_update', month: new Date().toISOString().slice(0,7)}); }catch(_e){} } catch(e){ showToast(e.message||'Delete failed','error'); }
+            try{ await apiSend('DELETE', `/finance/api/payruns/${encodeURIComponent(id)}`); await loadData(); updateUI(); try { await apiSend('POST','/overview_api/save', { month: new Date().toISOString().slice(0,7) }); } catch(_e){} showToast('Pay run deleted','success'); try{ financeChannel.postMessage({type:'pay_update', month: new Date().toISOString().slice(0,7)}); }catch(_e){} } catch(e){ showToast(e.message||'Delete failed','error'); }
         }
 
         async function saveShift(id) {

@@ -1,0 +1,186 @@
+<?php
+
+class overview_api extends Controller {
+  private function requireAuth() { if (!isset($_SESSION['auth'])) { header('Location: /login'); exit; } }
+  private function tenantId(): int { return (int)($_SESSION['auth']['tenant_id'] ?? 0); }
+  private function userId(): int { return (int)($_SESSION['auth']['id'] ?? 0); }
+  private function json($data, int $code=200): void { http_response_code($code); header('Content-Type: application/json'); echo json_encode($data); exit; }
+  private function bodyJson(): array { $raw=file_get_contents('php://input'); $j=json_decode($raw,true); return is_array($j)?$j:[]; }
+
+  private function ensureTable(PDO $dbh): void {
+    $dbh->exec('CREATE TABLE IF NOT EXISTS monthly_summaries (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tenant_id INT NOT NULL,
+      user_id INT NOT NULL,
+      year_month CHAR(7) NOT NULL,
+      currency VARCHAR(8) NULL,
+      totals_json JSON NULL,
+      categories_normal_json JSON NULL,
+      categories_travel_json JSON NULL,
+      kpis_json JSON NULL,
+      updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_tenant_user_month (tenant_id,user_id,year_month)
+    )');
+  }
+
+  private function tableExists(PDO $dbh, string $table): bool {
+    try { $st=$dbh->query("SHOW TABLES LIKE ".$dbh->quote($table)); return (bool)$st->fetch(); } catch (Throwable $e) { return false; }
+  }
+
+  private function hasColumn(PDO $dbh, string $table, string $column): bool {
+    try { $st=$dbh->query("SHOW COLUMNS FROM `{$table}` LIKE ".$dbh->quote($column)); return (bool)$st->fetch(); } catch (Throwable $e) { return false; }
+  }
+
+  private function defaultCurrency(PDO $dbh, int $tenantId): string {
+    if ($this->tableExists($dbh,'tenant_settings')) {
+      $st=$dbh->prepare('SELECT default_currency FROM tenant_settings WHERE tenant_id=?'); $st->execute([$tenantId]);
+      $r=$st->fetch(); if ($r && !empty($r['default_currency'])) return $r['default_currency'];
+    }
+    return 'CAD';
+  }
+
+  public function save() {
+    $this->requireAuth();
+    try {
+      $dbh = db_connect(); $this->ensureTable($dbh);
+      $tenantId=$this->tenantId(); $userId=$this->userId();
+      $b=$this->bodyJson(); $ym = isset($b['month']) && preg_match('/^\d{4}-\d{2}$/',$b['month']) ? $b['month'] : date('Y-m');
+      $start=$ym.'-01'; $end=date('Y-m-d', strtotime($start.' +1 month'));
+
+      // Currency
+      $currency = $this->defaultCurrency($dbh,$tenantId);
+
+      // Income (month): sum of pay_runs.net_cents within month
+      $st=$dbh->prepare('SELECT COALESCE(SUM(net_cents),0) s FROM pay_runs WHERE tenant_id=? AND period_end>=? AND period_end<?');
+      $st->execute([$tenantId,$start,$end]); $income_cents=(int)($st->fetch()['s'] ?? 0);
+
+      // Spending (month): sum of expenses.amount_cents within month with mode split (if available)
+      $spending_cents=0; $weeklySpentCents=0; $weeklySpentTravelCents=0; $catsNormal=[]; $catsTravel=[]; $totalNormalCents=0; $totalTravelCents=0;
+      if ($this->tableExists($dbh,'expenses')) {
+        $hasMode = $this->hasColumn($dbh,'expenses','mode');
+        $q=$dbh->prepare('SELECT e.*, c.name AS category_name FROM expenses e LEFT JOIN categories c ON c.id=e.category_id WHERE e.tenant_id=? AND e.date>=? AND e.date<?');
+        $q->execute([$tenantId,$start,$end]); $rows=$q->fetchAll();
+        foreach ($rows as $r) {
+          $amt=(int)$r['amount_cents']; $spending_cents += $amt;
+          $cat = $r['category_name'] ?: 'Other';
+          $mode = $hasMode ? ($r['mode'] ?: 'normal') : 'normal';
+          if ($mode === 'travel') { $catsTravel[$cat] = ($catsTravel[$cat] ?? 0) + $amt; $totalTravelCents += $amt; }
+          else { $catsNormal[$cat] = ($catsNormal[$cat] ?? 0) + $amt; $totalNormalCents += $amt; }
+        }
+        // Spent this week: use count_weekly flag when present within current week window, split by mode when available
+        $hasCount = $this->hasColumn($dbh,'expenses','count_weekly');
+        $wStart = date('Y-m-d', strtotime('monday this week'));
+        $wEnd = date('Y-m-d', strtotime($wStart.' +6 days'));
+        if ($hasMode) {
+          $qN = $hasCount
+            ? $dbh->prepare("SELECT COALESCE(SUM(amount_cents),0) s FROM expenses WHERE tenant_id=? AND date>=? AND date<=? AND (count_weekly=1 OR count_weekly IS NULL) AND mode='normal'")
+            : $dbh->prepare("SELECT COALESCE(SUM(amount_cents),0) s FROM expenses WHERE tenant_id=? AND date>=? AND date<=? AND mode='normal'");
+          $qT = $hasCount
+            ? $dbh->prepare("SELECT COALESCE(SUM(amount_cents),0) s FROM expenses WHERE tenant_id=? AND date>=? AND date<=? AND (count_weekly=1 OR count_weekly IS NULL) AND mode='travel'")
+            : $dbh->prepare("SELECT COALESCE(SUM(amount_cents),0) s FROM expenses WHERE tenant_id=? AND date>=? AND date<=? AND mode='travel'");
+          $qN->execute([$tenantId,$wStart,$wEnd]); $weeklySpentCents = (int)($qN->fetch()['s'] ?? 0);
+          $qT->execute([$tenantId,$wStart,$wEnd]); $weeklySpentTravelCents = (int)($qT->fetch()['s'] ?? 0);
+        } else {
+          $qq = $hasCount
+            ? $dbh->prepare('SELECT COALESCE(SUM(amount_cents),0) s FROM expenses WHERE tenant_id=? AND date>=? AND date<=? AND (count_weekly=1 OR count_weekly IS NULL)')
+            : $dbh->prepare('SELECT COALESCE(SUM(amount_cents),0) s FROM expenses WHERE tenant_id=? AND date>=? AND date<=?');
+          $qq->execute([$tenantId,$wStart,$wEnd]); $weeklySpentCents=(int)($qq->fetch()['s'] ?? 0);
+        }
+      }
+
+      $net_cents = $income_cents - $spending_cents;
+      $paycheck_cents = $income_cents; // mapping per spec
+
+      // KPIs
+      $weekly_budget_normal_cents = null; $weekly_budget_travel_cents = null;
+      if ($this->tableExists($dbh,'tenant_settings')) {
+        $ts=$dbh->prepare('SELECT weekly_budget_normal_cents, weekly_budget_travel_cents FROM tenant_settings WHERE tenant_id=?');
+        $ts->execute([$tenantId]); $row=$ts->fetch();
+        if ($row) { $weekly_budget_normal_cents = isset($row['weekly_budget_normal_cents'])?(int)$row['weekly_budget_normal_cents']:null; $weekly_budget_travel_cents = isset($row['weekly_budget_travel_cents'])?(int)$row['weekly_budget_travel_cents']:null; }
+      }
+      // Optional snapshots (best-effort)
+      $debtsTotal = 0; $investmentsTotal = 0; $savingsTotal = 0;
+      if ($this->tableExists($dbh,'debts')) {
+        // try common columns: balance or balance_cents
+        if ($this->hasColumn($dbh,'debts','balance_cents')) {
+          $st2=$dbh->prepare('SELECT COALESCE(SUM(balance_cents),0) s FROM debts WHERE tenant_id=?'); $st2->execute([$tenantId]); $debtsTotal = ((int)($st2->fetch()['s']??0))/100;
+        } else if ($this->hasColumn($dbh,'debts','balance')) {
+          $st2=$dbh->prepare('SELECT COALESCE(SUM(balance),0) s FROM debts WHERE tenant_id=?'); $st2->execute([$tenantId]); $debtsTotal = (float)($st2->fetch()['s']??0);
+        }
+      }
+      if ($this->tableExists($dbh,'investment_accounts')) {
+        if ($this->hasColumn($dbh,'investment_accounts','value')) {
+          $st3=$dbh->prepare('SELECT COALESCE(SUM(value),0) s FROM investment_accounts WHERE tenant_id=?'); $st3->execute([$tenantId]); $investmentsTotal = (float)($st3->fetch()['s']??0);
+        }
+      }
+      if ($this->tableExists($dbh,'savings_goals')) {
+        if ($this->hasColumn($dbh,'savings_goals','saved')) {
+          $st4=$dbh->prepare('SELECT COALESCE(SUM(saved),0) s FROM savings_goals WHERE tenant_id=?'); $st4->execute([$tenantId]); $savingsTotal = (float)($st4->fetch()['s']??0);
+        }
+      }
+
+      $kpis = [
+        'weekly_budget' => $weekly_budget_normal_cents ? $weekly_budget_normal_cents/100 : 0,
+        'weekly_budget_travel' => $weekly_budget_travel_cents ? $weekly_budget_travel_cents/100 : 0,
+        'spent_this_week' => $weeklySpentCents/100,
+        'spent_this_week_travel' => $weeklySpentTravelCents/100,
+        'remaining_week' => ($weekly_budget_normal_cents ? max(0, $weekly_budget_normal_cents - $weeklySpentCents) : 0)/100,
+        // Totals by mode
+        'total_normal' => $totalNormalCents/100,
+        'total_travel' => $totalTravelCents/100,
+        // Snapshots
+        'debts_total' => $debtsTotal,
+        'investments_total' => $investmentsTotal,
+        'savings_total' => $savingsTotal,
+      ];
+
+      $totals = [
+        'income_month' => $income_cents/100,
+        'spending_month' => $spending_cents/100,
+        'net_month' => $net_cents/100,
+        'paycheck_month' => $paycheck_cents/100,
+      ];
+
+      // Build categories JSON (amounts in base currency units)
+      $catsNOut = (object)[]; foreach ($catsNormal as $k=>$v){ $catsNOut->$k = round($v/100, 2); }
+      $catsTOut = (object)[]; foreach ($catsTravel as $k=>$v){ $catsTOut->$k = round($v/100, 2); }
+
+      // UPSERT row
+      $st=$dbh->prepare('INSERT INTO monthly_summaries (tenant_id,user_id,year_month,currency,totals_json,categories_normal_json,categories_travel_json,kpis_json)
+                         VALUES (?,?,?,?,CAST(? AS JSON),CAST(? AS JSON),CAST(? AS JSON),CAST(? AS JSON))
+                         ON DUPLICATE KEY UPDATE currency=VALUES(currency), totals_json=VALUES(totals_json), categories_normal_json=VALUES(categories_normal_json), categories_travel_json=VALUES(categories_travel_json), kpis_json=VALUES(kpis_json)');
+      $st->execute([$tenantId,$userId,$ym,$currency, json_encode($totals), json_encode($catsNOut), json_encode($catsTOut), json_encode($kpis)]);
+
+      return $this->json(['ok'=>true]);
+    } catch (Throwable $e) {
+      return $this->json(['ok'=>false,'error'=>$e->getMessage()],500);
+    }
+  }
+
+  public function get() {
+    $this->requireAuth();
+    try {
+      $dbh=db_connect(); $this->ensureTable($dbh); $tenantId=$this->tenantId(); $userId=$this->userId();
+      $month = trim($_GET['month'] ?? ''); if (!preg_match('/^\d{4}-\d{2}$/',$month)) $month = date('Y-m');
+      $st=$dbh->prepare('SELECT * FROM monthly_summaries WHERE tenant_id=? AND user_id=? AND year_month=? LIMIT 1');
+      $st->execute([$tenantId,$userId,$month]); $row=$st->fetch();
+      if (!$row) return $this->json(['ok'=>true,'data'=>[
+        'year_month'=>$month,
+        'currency'=>$this->defaultCurrency($dbh,$tenantId),
+        'totals'=>['income_month'=>0,'spending_month'=>0,'net_month'=>0,'paycheck_month'=>0],
+        'categories_normal'=>new stdClass(),
+        'categories_travel'=>new stdClass(),
+        'kpis'=>['weekly_budget'=>0,'spent_this_week'=>0,'remaining_week'=>0]
+      ]]);
+      $data=[
+        'year_month'=>$row['year_month'],
+        'currency'=>$row['currency'] ?: $this->defaultCurrency($dbh,$tenantId),
+        'totals'=> json_decode($row['totals_json'] ?: '{}', true),
+        'categories_normal'=> json_decode($row['categories_normal_json'] ?: '{}', true),
+        'categories_travel'=> json_decode($row['categories_travel_json'] ?: '{}', true),
+        'kpis'=> json_decode($row['kpis_json'] ?: '{}', true),
+      ];
+      return $this->json(['ok'=>true,'data'=>$data]);
+    } catch (Throwable $e) { return $this->json(['ok'=>false,'error'=>$e->getMessage()],500); }
+  }
+}

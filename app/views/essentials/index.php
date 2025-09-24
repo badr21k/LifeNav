@@ -1041,9 +1041,9 @@ function App() {
                     const list = await apiGet('/finance/api/currencies');
                     if (!mounted) return; setState(prev=>({ ...prev, currencies: Array.isArray(list) ? list : [] }));
                 } catch(_e){}
-                const s = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`);
+                const res = await apiGet(`/overview_api/get?month=${encodeURIComponent(ym)}`);
                 if (!mounted) return;
-                setState(prev => ({ ...prev, paycheck: (s?.income_cents||0)/100 }));
+                setState(prev => ({ ...prev, paycheck: (res?.data?.totals?.paycheck_month||0) }));
             } catch (e) {
                 console.warn('summary fetch failed', e);
             }
@@ -1052,8 +1052,9 @@ function App() {
         financeChannelRef.current = new BroadcastChannel('lifenav_finance');
         financeChannelRef.current.onmessage = (ev) => {
             if (ev?.data?.type === 'pay_update' && ev?.data?.month === ym) {
-                apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`).then(s=>{
-                    setState(prev => ({ ...prev, paycheck: (s?.income_cents||0)/100 }));
+                apiGet(`/overview_api/get?month=${encodeURIComponent(ym)}`).then(r=>{
+                    const p = r?.data?.totals?.paycheck_month || 0;
+                    setState(prev => ({ ...prev, paycheck: p }));
                 }).catch(()=>{});
             }
         };
@@ -1243,7 +1244,7 @@ function App() {
         if (!catId) { setState(prev=>({ ...prev, error: 'Unknown category' })); return; }
 
         try {
-            const payload = { date: dateInput.value, amount_cents: Math.round(amount*100), currency, category_id: catId, subcategory_id: subId, payment_method_id: null, merchant: '', note };
+            const payload = { mode: state.mode, date: dateInput.value, amount_cents: Math.round(amount*100), currency, category_id: catId, subcategory_id: subId, payment_method_id: null, merchant: '', note };
             // Persist weekly counting and recurring fields
             payload.count_weekly = !!document.getElementById('count-weekly')?.checked;
             if (document.getElementById('recurring')?.checked) {
@@ -1262,6 +1263,7 @@ function App() {
             if (state.editingId) await apiSend('PUT', `/essentials/api/expenses/${encodeURIComponent(state.editingId)}`, payload);
             else await apiSend('POST', '/essentials/api/expenses', payload);
             await loadEssentials();
+            try { await apiSend('POST','/overview_api/save', { month: new Date().toISOString().slice(0,7) }); } catch(_e){}
             setState(prev=>({ ...prev, modal: null, editingId: null, fromRecurringList: false, error: null }));
         } catch (e) { setState(prev=>({ ...prev, error: e.message })); }
     };
@@ -1273,7 +1275,7 @@ function App() {
 
     // Delete expense (DB)
     const deleteExpense = async (id) => {
-        try { await apiSend('DELETE', `/essentials/api/expenses/${encodeURIComponent(id)}`); await loadEssentials(); }
+        try { await apiSend('DELETE', `/essentials/api/expenses/${encodeURIComponent(id)}`); await loadEssentials(); try{ await apiSend('POST','/overview_api/save', { month: new Date().toISOString().slice(0,7) }); }catch(_e){} }
         catch (e) { console.error(e); }
     };
 

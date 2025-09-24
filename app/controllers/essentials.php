@@ -1,3 +1,7 @@
+              // ensure mode column exists (normal/travel)
+              if (!$this->hasColumn($dbh,'expenses','mode')) {
+                try { $dbh->exec("ALTER TABLE expenses ADD COLUMN mode ENUM('normal','travel') NOT NULL DEFAULT 'normal' AFTER user_id"); } catch (Throwable $e) { /* ignore */ }
+              }
 <?php
 class essentials extends Controller {
 
@@ -83,6 +87,7 @@ class essentials extends Controller {
               $recForever = isset($b['recurring_forever']) ? (int)!!$b['recurring_forever'] : 0;
               $recDay = isset($b['recurring_day']) ? max(1,min(28,(int)$b['recurring_day'])) : 1;
               $userId=$this->userId();
+              $mode = in_array(($b['mode'] ?? 'normal'), ['normal','travel'], true) ? $b['mode'] : 'normal';
               if ($this->hasColumn($dbh,'expenses','count_weekly')) {
                 $hasRec = $this->hasColumn($dbh,'expenses','recurring_start') && $this->hasColumn($dbh,'expenses','recurring_end') && $this->hasColumn($dbh,'expenses','recurring_forever');
                 if ($hasRec) {
@@ -91,15 +96,15 @@ class essentials extends Controller {
                   if (!$this->hasColumn($dbh,'expenses','recurring_last_ym')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_last_ym CHAR(7) NULL AFTER recurring_template"); } catch (Throwable $e) {} }
                   if (!$this->hasColumn($dbh,'expenses','recurring_day')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_day TINYINT(2) NULL AFTER recurring_forever"); } catch (Throwable $e) {} }
                   if (!$this->hasColumn($dbh,'expenses','generated_from_id')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN generated_from_id INT NULL AFTER recurring_last_ym"); } catch (Throwable $e) {} }
-                  $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,recurring_start,recurring_end,recurring_forever,recurring_day,recurring_template,recurring_last_ym,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
-                  $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly,$recStart,$recEnd,$recForever,$recDay,1,null]);
+                  $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,mode,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,recurring_start,recurring_end,recurring_forever,recurring_day,recurring_template,recurring_last_ym,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+                  $st->execute([$tenantId,$userId,$mode,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly,$recStart,$recEnd,$recForever,$recDay,1,null]);
                 } else {
-                  $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
-                  $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly]);
+                  $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,mode,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+                  $st->execute([$tenantId,$userId,$mode,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note,$countWeekly]);
                 }
               } else {
-                $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
-                $st->execute([$tenantId,$userId,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note]);
+                $st=$dbh->prepare('INSERT INTO expenses (tenant_id,user_id,mode,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+                $st->execute([$tenantId,$userId,$mode,$date,$amount,$currency,$cat,$sub,$pm,$merchant,$note]);
               }
               return $this->json(['id'=>(int)$dbh->lastInsertId()],201);
             case 'PUT':
@@ -116,6 +121,7 @@ class essentials extends Controller {
               if (!$this->hasColumn($dbh,'expenses','recurring_forever')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN recurring_forever TINYINT(1) NOT NULL DEFAULT 0 AFTER recurring_end"); } catch (Throwable $e) {} }
               $fields=[]; $vals=[];
               foreach(['date','currency','merchant','note'] as $k){ if(isset($b[$k])){ $fields[]="$k=?"; $vals[]=$b[$k]; }}
+              if (isset($b['mode'])) { $fields[]='mode=?'; $vals[] = in_array($b['mode'],['normal','travel'],true)?$b['mode']:'normal'; }
               if(isset($b['amount_cents'])){ $fields[]='amount_cents=?'; $vals[]=(int)$b['amount_cents']; }
               if(isset($b['category_id'])){ $fields[]='category_id=?'; $vals[]=(int)$b['category_id']; }
               if(array_key_exists('subcategory_id',$b)){ $fields[]='subcategory_id=?'; $vals[]=($b['subcategory_id']!==''?(int)$b['subcategory_id']:null); }
@@ -212,8 +218,10 @@ class essentials extends Controller {
       $templates = $st->fetchAll();
       if (!$templates) return;
 
-      $ins = $dbh->prepare('INSERT INTO expenses (tenant_id,user_id,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,generated_from_id,created_at,updated_at)
-                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+      // ensure mode column exists (idempotent)
+      if (!$this->hasColumn($dbh,'expenses','mode')) { try { $dbh->exec("ALTER TABLE expenses ADD COLUMN mode ENUM('normal','travel') NOT NULL DEFAULT 'normal' AFTER user_id"); } catch (Throwable $e) { /* ignore */ } }
+      $ins = $dbh->prepare('INSERT INTO expenses (tenant_id,user_id,mode,date,amount_cents,currency,category_id,subcategory_id,payment_method_id,merchant,note,count_weekly,generated_from_id,created_at,updated_at)
+                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
       $upd = $dbh->prepare('UPDATE expenses SET recurring_last_ym=? WHERE id=? AND tenant_id=?');
 
       foreach ($templates as $t) {
@@ -225,6 +233,7 @@ class essentials extends Controller {
         $ins->execute([
           (int)$t['tenant_id'],
           (int)($t['user_id'] ?? 0),
+          isset($t['mode']) && in_array($t['mode'],['normal','travel'],true) ? $t['mode'] : 'normal',
           $postDate,
           (int)$t['amount_cents'],
           $t['currency'],
