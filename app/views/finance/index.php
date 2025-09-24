@@ -124,7 +124,7 @@
             min-height: 100vh;
             /* Keep page spacing while offsetting the fixed global header */
             padding: 1.5rem;
-            padding-top: calc(var(--header-h) + 1rem);
+            padding-top: calc(var(--header-h) + 1rem + var(--safe-area-inset-top));
             font-size: 0.9375rem;
             font-weight: 400;
             display: flex;
