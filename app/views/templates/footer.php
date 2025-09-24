@@ -77,29 +77,14 @@
       var SHOW_KEY = 'lifenav_show_values';
       var showValues = false;
       try { showValues = localStorage.getItem(SHOW_KEY) === 'true'; } catch(_) {}
-      // Text masking utilities -> transforms numbers to pattern with X
-      function maskDigits(text){
-        // Replace all ASCII digits with X, leave punctuation and currency symbols intact
-        return (text||'').replace(/[0-9]/g, 'X');
-      }
-      function maskElement(el){
-        if (!el || el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
-        if (!el.hasAttribute('data-sv-original')) el.setAttribute('data-sv-original', el.textContent);
-        var orig = el.getAttribute('data-sv-original');
-        el.textContent = maskDigits(orig);
-      }
-      function unmaskElement(el){
-        if (!el) return;
-        var orig = el.getAttribute('data-sv-original');
-        if (orig != null) el.textContent = orig;
-      }
       function applyShowValues(flag){
-        // flag === true => show values (restore text)
+        // flag === true => show values (remove masks)
         try { localStorage.setItem(SHOW_KEY, flag ? 'true' : 'false'); } catch(_) {}
         try {
           document.querySelectorAll('.sensitive-value').forEach(function(el){
-            if (flag) { unmaskElement(el); }
-            else { maskElement(el); }
+            if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
+            if (flag) el.classList.remove('sv-blur');
+            else el.classList.add('sv-blur');
           });
         } catch(_) {}
         // Update header button states
@@ -152,7 +137,8 @@
               // Apply current mask state to new nodes
               var current = localStorage.getItem(SHOW_KEY) === 'true';
               document.querySelectorAll('.sensitive-value').forEach(function(el){
-                if (current) unmaskElement(el); else maskElement(el);
+                if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
+                if (current) el.classList.remove('sv-blur'); else el.classList.add('sv-blur');
               });
             }
           });
