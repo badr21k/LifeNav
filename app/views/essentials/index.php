@@ -855,6 +855,43 @@
     <div id="root"></div>
     <script type="text/babel" data-presets="env,react">
         const { useState, useEffect, useRef } = React;
+        // Theme-aware chart helpers
+        window.LifeNavCharts = window.LifeNavCharts || [];
+        function themePalette(){
+            return (window.LifeNavGetChartPalette && window.LifeNavGetChartPalette()) || ['#2c6b5f','#6b7280','#9ca3af','#d1d5db','#e5e7eb'];
+        }
+        function chartColors(){
+            const cs = getComputedStyle(document.documentElement);
+            return {
+                text: (cs.getPropertyValue('--text').trim() || '#111827'),
+                textLight: (cs.getPropertyValue('--text-light').trim() || '#6b7280'),
+                card: (cs.getPropertyValue('--card').trim() || '#ffffff'),
+                border: (cs.getPropertyValue('--border').trim() || '#e5e7eb')
+            };
+        }
+        window.addEventListener('themechange', () => {
+            try {
+                const pal = themePalette();
+                const colors = chartColors();
+                (window.LifeNavCharts || []).forEach(ch => {
+                    if (!ch) return;
+                    ch.data.datasets.forEach(ds => {
+                        ds.backgroundColor = pal;
+                        ds.borderColor = colors.card;
+                    });
+                    if (!ch.options) ch.options = {};
+                    if (!ch.options.plugins) ch.options.plugins = {};
+                    ch.options.plugins.legend = ch.options.plugins.legend || {};
+                    ch.options.plugins.legend.labels = ch.options.plugins.legend.labels || {};
+                    ch.options.plugins.legend.labels.color = colors.text;
+                    ch.options.plugins.tooltip = ch.options.plugins.tooltip || {};
+                    ch.options.plugins.tooltip.backgroundColor = colors.card;
+                    ch.options.plugins.tooltip.titleColor = colors.text;
+                    ch.options.plugins.tooltip.bodyColor = colors.text;
+                    ch.update('none');
+                });
+            } catch(_) {}
+        });
         // CSRF token for API calls
         const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
         async function apiGet(path) {
@@ -1255,32 +1292,32 @@ function App() {
         if (chartRef.current) {
             if (state.charts.main) state.charts.main.destroy();
             const ctx = chartRef.current.getContext('2d');
+            const pal = themePalette();
+            const colors = chartColors();
             const newChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: Object.keys(categoryTotals),
                     datasets: [{
                         data: Object.values(categoryTotals),
-                        backgroundColor: ['#1a1a1a', '#4b5563', '#6b7280', '#9ca3af', '#d1d5db'],
+                        backgroundColor: pal,
                         borderWidth: 1,
-                        borderColor: '#fff',
-                        hoverOffset: 12,
-                    }],
+                        borderColor: colors.card,
+                    }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: { font: { size: 12, family: 'Inter', weight: '600' }, padding: 16 },
+                            labels: { color: colors.text, font: { size: 12, family: 'Inter', weight: '600' }, padding: 16 },
                         },
-                        tooltip: { backgroundColor: '#1a1a1a', bodyFont: { family: 'Inter', size: 12 }, titleFont: { family: 'Inter', size: 14 } },
+                        tooltip: { backgroundColor: colors.card, titleColor: colors.text, bodyColor: colors.text, bodyFont: { family: 'Inter', size: 12 }, titleFont: { family: 'Inter', size: 14 } },
                     },
                     cutout: '65%',
                     animation: { animateScale: true },
                 },
             });
+            window.LifeNavCharts.push(newChart);
             setState(prev => ({ ...prev, charts: { ...prev.charts, main: newChart } }));
         }
 
@@ -1294,29 +1331,30 @@ function App() {
             if (categoryChartRefs.current[cat] && Object.keys(categorySubtotals[cat]).length > 0) {
                 if (state.charts[cat]) state.charts[cat].destroy();
                 const ctx = categoryChartRefs.current[cat].getContext('2d');
+                const pal = themePalette();
+                const colors = chartColors();
                 const newChart = new Chart(ctx, {
                     type: 'pie',
                     data: {
                         labels: Object.keys(categorySubtotals[cat]),
                         datasets: [{
                             data: Object.values(categorySubtotals[cat]),
-                            backgroundColor: ['#1a1a1a', '#4b5563', '#6b7280', '#9ca3af', '#d1d5db'],
+                            backgroundColor: pal,
                             borderWidth: 1,
-                            borderColor: '#fff',
-                        }],
+                            borderColor: colors.card,
+                        }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
                         plugins: {
                             legend: {
                                 position: 'bottom',
-                                labels: { font: { size: 12, family: 'Inter', weight: '600' }, padding: 16 },
+                                labels: { color: colors.text, font: { size: 12, family: 'Inter', weight: '600' }, padding: 16 },
                             },
-                            tooltip: { backgroundColor: '#1a1a1a', bodyFont: { family: 'Inter', size: 12 }, titleFont: { family: 'Inter', size: 14 } },
+                            tooltip: { backgroundColor: colors.card, titleColor: colors.text, bodyColor: colors.text, bodyFont: { family: 'Inter', size: 12 }, titleFont: { family: 'Inter', size: 14 } },
                         },
                     },
                 });
+                window.LifeNavCharts.push(newChart);
                 setState(prev => ({ ...prev, charts: { ...prev.charts, [cat]: newChart } }));
             }
         });

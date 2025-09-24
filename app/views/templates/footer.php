@@ -30,7 +30,34 @@
         if (next === 'dark') document.documentElement.setAttribute('data-theme','dark');
         else document.documentElement.removeAttribute('data-theme');
         localStorage.setItem(THEME_KEY, next);
-      } catch(_){}
+        // Notify listeners (charts, components) that theme changed
+        try { window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } })); } catch(_) {}
+      } catch(_){}}
+    // Global chart palette helper using current CSS variables
+    window.LifeNavGetChartPalette = function(){
+      var cs = getComputedStyle(document.documentElement);
+      function v(n){ return cs.getPropertyValue(n).trim() || '#888'; }
+      var primary = v('--primary');
+      var text = v('--text');
+      var textLight = v('--text-light');
+      var border = v('--border');
+      var alt = 'rgba(111,213,199,0.35)';
+      return [primary, text, textLight, border, alt];
+    };
+    // Auto-update any charts registered on theme change
+    window.addEventListener('themechange', function(){
+      try {
+        var palette = window.LifeNavGetChartPalette();
+        (window.LifeNavCharts || []).forEach(function(ch){
+          try {
+            if (ch && ch.data && ch.data.datasets && ch.data.datasets[0]){
+              ch.data.datasets.forEach(function(ds){ ds.backgroundColor = palette; ds.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#fff'; });
+              ch.update('none');
+            }
+          } catch(_) {}
+        });
+      } catch(_) {}
+    });
     };
     document.addEventListener('DOMContentLoaded', function(){
       var navEl = document.getElementById('navbarSupportedContent');

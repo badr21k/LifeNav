@@ -34,6 +34,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --text: #111827;
         --text-light: #6b7280;
         --card: #ffffff;
+        --card-rgb: 255, 255, 255;
         --background: #f8fafc;
         --border: #e5e7eb;
         --shadow-sm: 0 2px 4px rgba(0,0,0,.06);
@@ -46,16 +47,20 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --transition: all .25s cubic-bezier(.4,0,.2,1);
       }
       [data-theme="dark"] {
-        --primary: #4ca89b;
-        --primary-dark: #3b867b;
-        --primary-light: #1a3c34;
-        --text: #f3f4f6;
-        --text-light: #d1d5db;
-        --card: #0f172a;
+        /* Brighter primary with softer light background tint */
+        --primary: #6fd5c7;
+        --primary-dark: #4cb8a9;
+        --primary-light: rgba(111, 213, 199, 0.14);
+        /* Text and surfaces */
+        --text: #e5e7eb;
+        --text-light: #9ca3af;
+        --card: #111827;
+        --card-rgb: 17, 24, 39; /* for glass header */
         --background: #0b1220;
-        --border: #1f2a44;
-        --shadow-sm: 0 2px 4px rgba(0,0,0,.4);
-        --shadow-md: 0 10px 20px rgba(0,0,0,.5);
+        --border: #22304d;
+        /* Slightly stronger but still soft shadows for dark */
+        --shadow-sm: 0 2px 6px rgba(0,0,0,.5);
+        --shadow-md: 0 12px 28px rgba(0,0,0,.6);
       }
       * {
         box-sizing: border-box;
@@ -84,7 +89,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         padding: 0.5rem 0;
       }
       [data-theme="dark"] .navbar-modern {
-        background: rgba(15, 23, 42, 0.85) !important;
+        background: rgba(var(--card-rgb), 0.88) !important;
         backdrop-filter: saturate(180%) blur(10px);
       }
       .navbar-brand {
@@ -133,11 +138,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         opacity: 0.9;
         transition: var(--transition);
       }
-      .nav-link:hover {
-        color: var(--primary);
-        background: transparent;
-        transform: translateY(-1px);
-      }
+      .nav-link:hover { color: var(--primary); background: transparent; transform: translateY(-1px); }
+      [data-theme="dark"] .nav-link:hover { background: rgba(111,213,199,0.08); }
       .nav-link:hover i {
         transform: scale(1.1);
       }
@@ -185,12 +187,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         color: var(--text);
         transition: var(--transition);
       }
-      .user-chip:hover {
-        border-color: var(--primary);
-        background: var(--primary-light);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-sm);
-      }
+      .user-chip:hover { border-color: var(--primary); background: var(--primary-light); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+      [data-theme="dark"] .user-chip:hover { background: rgba(111,213,199,0.12); }
       .user-chip i {
         opacity: 0.9;
         font-size: 1.1rem;
@@ -204,6 +202,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         padding: 0.5rem;
         min-width: 200px;
       }
+      [data-theme="dark"] .dropdown-menu { background: var(--card); border-color: var(--border); }
       .dropdown-item {
         padding: 0.75rem 1rem;
         border-radius: var(--radius-sm);
