@@ -141,6 +141,8 @@
             width: 100%;
             flex: 1;
             padding: 0 1rem;
+            /* Ensure content always clears the fixed header */
+            margin-top: calc(var(--header-h) + 0.5rem);
         }
 
         .header {
