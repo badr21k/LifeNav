@@ -26,7 +26,26 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      // Apply theme BEFORE CSS paints to prevent white flash between pages
+      (function(){
+        try {
+          var key = 'lifenav_theme';
+          var saved = localStorage.getItem(key);
+          if (!saved) {
+            var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            saved = sysDark ? 'dark' : 'light';
+          }
+          if (saved === 'dark') { document.documentElement.setAttribute('data-theme','dark'); document.documentElement.style.colorScheme='dark'; }
+          else { document.documentElement.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light'; }
+          // Suppress transitions during first paint; footer removes this class on DOMContentLoaded
+          document.documentElement.classList.add('theme-init');
+        } catch(_) {}
+      })();
+    </script>
     <style>
+      /* Disable transitions during initial theme application to prevent flicker */
+      html.theme-init *, html.theme-init *::before, html.theme-init *::after { transition: none !important; }
       :root {
         --primary: #2c6b5f;
         --primary-dark: #1f4b43;

@@ -59,6 +59,7 @@
       } catch(_) {}
     });
     document.addEventListener('DOMContentLoaded', function(){
+      try { document.documentElement.classList.remove('theme-init'); } catch(_) {}
       var navEl = document.getElementById('navbarSupportedContent');
       var toggler = document.querySelector('.navbar-toggler');
       var header = document.querySelector('.navbar-modern');
