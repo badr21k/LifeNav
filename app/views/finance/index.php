@@ -400,16 +400,32 @@
         }
 
         /* Currency search enhanced styles */
-        .currency-selector-wrapper { display: flex; gap: .5rem; align-items: center; position: relative; }
+        .currency-selector-wrapper {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: .5rem;
+            align-items: center;
+            width: 100%;
+            max-width: 720px;
+        }
+        .currency-selector-wrapper::before{
+            content: "\f002"; /* fa-search */
+            font-family: "Font Awesome 6 Free"; font-weight: 900;
+            position: absolute; left: .75rem; top: 50%; transform: translateY(-50%);
+            color: var(--text-light); font-size: .9rem; pointer-events: none;
+        }
         .currency-typeahead {
-            padding: 0.6rem 0.75rem;
+            padding: 0.6rem 0.75rem 0.6rem 2rem; /* space for icon */
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             background: var(--card);
-            min-width: 240px;
+            width: 100%;
+            min-width: 0;
             box-shadow: var(--shadow-sm);
         }
         .currency-typeahead:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(44,107,95,0.12); }
+        .currency-selector { min-width: 8rem; }
         .currency-dropdown {
             position: absolute;
             top: 100%; left: 0;
@@ -436,6 +452,9 @@
                 grid-template-columns: repeat(2, 1fr);
                 gap: 0.75rem;
             }
+            .currency-selector-wrapper { grid-template-columns: 1fr; gap: .5rem; }
+            .currency-selector { width: 100%; min-width: 0; }
+            #currency-dropdown { max-height: 40vh; }
             
             .summary-item {
                 padding: 1rem;
@@ -1066,7 +1085,7 @@
         <header class="header">
             <div class="controls">
                 <div class="currency-selector-wrapper">
-                    <input id="currency-search" class="currency-typeahead" placeholder="" aria-label="Search currency" autocomplete="off" />
+                    <input id="currency-search" class="currency-typeahead" placeholder="Search currency (code or name)…" aria-label="Search currency" autocomplete="off" />
                     <div id="currency-dropdown" class="currency-dropdown" role="listbox" aria-label="Currencies"></div>
                     <select id="base-currency-selector" class="currency-selector" aria-label="Base currency">
                         <option value="USD">USD</option>
