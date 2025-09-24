@@ -1459,11 +1459,6 @@ function App() {
                             {state.mode === 'normal' ? (
                                 <>
                                     <div className="form-group">
-                                        <label htmlFor="paycheck">Paycheck</label>
-                                        <input id="paycheck" type="number" step="0.01" className="form-control" value={state.paycheck} readOnly disabled placeholder="0.00" />
-                                        <small className="text-gray-500">Value comes from Finance pay runs (current month).</small>
-                                    </div>
-                                    <div className="form-group">
                                         <label htmlFor="weekly-budget-normal">Weekly Budget</label>
                                         <input id="weekly-budget-normal" type="number" step="0.01" className="form-control" defaultValue={state.weeklyBudgetNormal} placeholder="0.00" />
                                     </div>
