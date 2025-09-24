@@ -99,7 +99,7 @@
           if (tx) tx.textContent = flag ? 'Hide values' : 'Show values';
         }
         // Update mobile items text/icon
-        var items = [document.getElementById('toggle-values-mobile'), document.getElementById('m-toggle-values-mobile')];
+        var items = [document.getElementById('toggle-values-mobile'), document.getElementById('m-toggle-values-mobile'), document.getElementById('toggle-values-sm')];
         items.forEach(function(el){
           if (!el) return;
           var i = el.querySelector('i'); var s = el.querySelector('span');
@@ -112,6 +112,11 @@
       if (toggleBtn){
         toggleBtn.addEventListener('click', function(){ showValues = !showValues; applyShowValues(showValues); });
         toggleBtn.addEventListener('keydown', function(e){ if (e.key==='Enter' || e.key===' '){ e.preventDefault(); showValues = !showValues; applyShowValues(showValues); }});
+      }
+      var toggleBtnSm = document.getElementById('toggle-values-sm');
+      if (toggleBtnSm){
+        toggleBtnSm.addEventListener('click', function(){ showValues = !showValues; applyShowValues(showValues); });
+        toggleBtnSm.addEventListener('keydown', function(e){ if (e.key==='Enter' || e.key===' '){ e.preventDefault(); showValues = !showValues; applyShowValues(showValues); }});
       }
       // Mobile dropdown items
       ['toggle-values-mobile','m-toggle-values-mobile'].forEach(function(id){

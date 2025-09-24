@@ -561,11 +561,17 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       <span class="brand-icon">LN</span>
       <span>LifeNav</span>
     </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-            data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
-            aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+    <div class="d-flex align-items-center d-lg-none" style="gap:.5rem;">
+      <button id="toggle-values-sm" type="button" class="values-toggle-btn" aria-pressed="false" aria-label="Show values" title="Show values (Shift+V)">
+        <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
+        <span class="visually-hidden">Show values</span>
+      </button>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+              data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+    </div>
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav mb-2 mb-lg-0">
         <li class="nav-item">
