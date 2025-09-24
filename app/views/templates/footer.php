@@ -139,23 +139,40 @@
 
       // Mark numeric text nodes as sensitive automatically when inside elements marked via data-sv or common classes
       function markSensitive(root){
-        var selectors = ['.sensitive-value','[data-sensitive]','[data-sv]','.summary-value','.stat-value','#income-value','#expenses-value'];
-        root.querySelectorAll(selectors.join(',')).forEach(function(el){
-          el.classList.add('sensitive-value');
-          // Apply current state
-          if (showValues) unmaskElement(el); else maskElement(el);
-        });
+        var selectors = ['.sensitive-value','[data-sensitive]','[data-sv]']; // keep targeted to avoid heavy scans
+        var result = [];
+        try {
+          root.querySelectorAll(selectors.join(',')).forEach(function(el){
+            if (el.dataset && el.dataset.svProcessed) return;
+            el.dataset.svProcessed = '1';
+            el.classList.add('sensitive-value');
+            result.push(el);
+          });
+        } catch(_) {}
+        return result;
       }
-      markSensitive(document);
+      // Initial pass
+      var initiallyMarked = markSensitive(document);
+      initiallyMarked.forEach(function(el){ if (showValues) unmaskElement(el); else maskElement(el); });
       // Observe dynamic content changes (React renders)
       try {
+        var queue = [];
+        var scheduled = false;
+        function flush(){
+          scheduled = false;
+          var batch = queue.splice(0, queue.length);
+          var current = localStorage.getItem(SHOW_KEY) === 'true';
+          batch.forEach(function(node){
+            if (node.nodeType !== 1) return; // ELEMENT_NODE
+            var marked = markSensitive(node);
+            marked.forEach(function(el){ if (current) unmaskElement(el); else maskElement(el); });
+          });
+        }
         var obs = new MutationObserver(function(muts){
           muts.forEach(function(m){
-            if (m.type==='childList') {
-              markSensitive(m.target);
-              // Apply current mask state to new nodes
-              var current = localStorage.getItem(SHOW_KEY) === 'true';
-              document.querySelectorAll('.sensitive-value').forEach(function(el){ if (current) unmaskElement(el); else maskElement(el); });
+            if (m.type==='childList' && m.addedNodes && m.addedNodes.length){
+              m.addedNodes.forEach(function(n){ queue.push(n); });
+              if (!scheduled){ scheduled = true; (window.requestAnimationFrame||setTimeout)(flush); }
             }
           });
         });
