@@ -71,11 +71,30 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             mobileBtn.querySelector('i').className = isHidden ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
             mobileBtn.querySelector('span').textContent = isHidden ? 'Hide values' : 'Show values';
           };
+
+          // Hover/touch to temporarily reveal blurred values
+          const handleReveal = (e) => {
+            if (document.body.classList.contains('show-values')) return;
+            const target = e.target.closest('.sv-blur');
+            if (target) target.classList.add('sv-reveal');
+          };
+          const handleHide = (e) => {
+            const target = e.target.closest('.sv-blur');
+            if (target) target.classList.remove('sv-reveal');
+          };
+
           document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('toggle-values-btn').addEventListener('click', toggleValues);
             document.getElementById('m-toggle-values-mobile').addEventListener('click', toggleValues);
             document.addEventListener('keydown', (e) => {
               if (e.shiftKey && e.key === 'V') toggleValues();
+            });
+            // Add hover/touch events for blur reveal
+            document.querySelectorAll('.sv-blur').forEach(el => {
+              el.addEventListener('mouseenter', handleReveal);
+              el.addEventListener('mouseleave', handleHide);
+              el.addEventListener('touchstart', handleReveal);
+              el.addEventListener('touchend', handleHide);
             });
           });
         } catch(_) {}
@@ -89,7 +108,9 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
 
       /* Sensitive values blur */
       :root {
-        --sv-blur: 6px;
+        --sv-blur: 4px; /* Reduced blur radius for a subtler, modern effect */
+        --sv-opacity: 0.7; /* Slight transparency for professionalism */
+        --sv-grayscale: 0.3; /* Subtle grayscale for visual distinction */
         --primary: #2c6b5f;
         --primary-dark: #1f4b43;
         --primary-light: #e6f0ee;
@@ -121,7 +142,9 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --border: #2d3748;
         --shadow-sm: 0 2px 8px rgba(0,0,0,.5);
         --shadow-md: 0 10px 20px rgba(0,0,0,.6);
-        --sv-blur: 5px;
+        --sv-blur: 3.5px; /* Slightly less blur in dark mode for clarity */
+        --sv-opacity: 0.65;
+        --sv-grayscale: 0.4;
       }
 
       [data-theme="classic-dark"] {
@@ -136,21 +159,61 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         --border: #2a2d31;
         --shadow-sm: 0 2px 8px rgba(0,0,0,.55);
         --shadow-md: 0 10px 20px rgba(0,0,0,.65);
-        --sv-blur: 5px;
+        --sv-blur: 3.5px;
+        --sv-opacity: 0.65;
+        --sv-grayscale: 0.4;
       }
 
       .sv-blur {
-        filter: blur(var(--sv-blur)) saturate(1.1) contrast(.95);
+        filter: blur(var(--sv-blur)) grayscale(var(--sv-grayscale)) opacity(var(--sv-opacity));
         user-select: none;
-        transition: filter .2s ease;
+        transition: filter .25s ease, opacity .25s ease;
+        cursor: pointer; /* Indicates interactivity */
+        position: relative;
+      }
+
+      .sv-blur::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.05); /* Subtle overlay for light mode */
+        pointer-events: none;
+        transition: background .25s ease;
+      }
+
+      [data-theme="dark"] .sv-blur::after,
+      [data-theme="classic-dark"] .sv-blur::after {
+        background: rgba(255, 255, 255, 0.1); /* Subtle overlay for dark modes */
+      }
+
+      .sv-blur:hover, .sv-blur:focus, .sv-blur.sv-reveal {
+        filter: none;
+        opacity: 1;
+      }
+
+      .sv-blur:hover::after, .sv-blur:focus::after, .sv-blur.sv-reveal::after {
+        background: transparent;
       }
 
       .show-values .sv-blur {
         filter: none;
+        opacity: 1;
+      }
+
+      .show-values .sv-blur::after {
+        background: transparent;
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .sv-blur, * { transition: none !important; }
+        .sv-blur { transition: none !important; }
+      }
+
+      /* Accessibility for screen readers */
+      .sv-blur[aria-hidden="true"] {
+        visibility: hidden;
       }
 
       * {
@@ -349,7 +412,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         transition: opacity .2s ease;
       }
 
-      /* --- Dark Theme Text Fixes (global) --- */
+      /* Dark Theme Text Fixes */
       [data-theme="dark"], [data-theme="classic-dark"] {
         --bs-body-color: var(--text);
       }
@@ -528,7 +591,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             <button class="btn user-chip user-chip-mobile dropdown-toggle w-100" type="button" 
                     id="userMenuMobile" data-bs-toggle="dropdown" aria-expanded="false">
               <i class="fa-solid fa-user"></i>
-              <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
+              <span class="sv-blur"><?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?></span>
             </button>
             <ul class="dropdown-menu w-100" aria-labelledby="userMenuMobile">
               <li><h6 class="dropdown-header">Theme</h6></li>
@@ -564,7 +627,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         <button class="btn user-chip dropdown-toggle" type="button" 
                 id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
           <i class="fa-solid fa-user"></i>
-          <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
+          <span class="sv-blur"><?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?></span>
         </button>
         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
           <li><h6 class="dropdown-header">Theme</h6></li>
