@@ -23,16 +23,29 @@
       if (saved === 'dark') { document.documentElement.setAttribute('data-theme','dark'); }
       else { document.documentElement.removeAttribute('data-theme'); }
     } catch(_) {}
+    function applyTheme(theme){
+      if (theme === 'dark' || theme === 'classic-dark') {
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.style.colorScheme = 'dark';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.documentElement.style.colorScheme = 'light';
+      }
+      localStorage.setItem(THEME_KEY, theme);
+      try { window.dispatchEvent(new CustomEvent('themechange', { detail: { theme } })); } catch(_) {}
+    }
+    window.setTheme = function(theme){
+      try { applyTheme(theme); } catch(_) {}
+    };
     window.toggleTheme = function(){
       try {
-        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        var next = isDark ? 'light' : 'dark';
-        if (next === 'dark') document.documentElement.setAttribute('data-theme','dark');
-        else document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem(THEME_KEY, next);
-        // Notify listeners (charts, components) that theme changed
-        try { window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } })); } catch(_) {}
-      } catch(_){}}
+        var cur = localStorage.getItem(THEME_KEY) || (document.documentElement.getAttribute('data-theme') || 'light');
+        var order = ['light','dark','classic-dark'];
+        var idx = order.indexOf(cur);
+        var next = order[(idx+1) % order.length];
+        applyTheme(next);
+      } catch(_){}
+    }
     // Global chart palette helper using current CSS variables
     window.LifeNavGetChartPalette = function(){
       var cs = getComputedStyle(document.documentElement);
