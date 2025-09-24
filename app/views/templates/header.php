@@ -51,6 +51,24 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     <style>
       /* Disable transitions during initial theme application to prevent flicker */
       html.theme-init *, html.theme-init *::before, html.theme-init *::after { transition: none !important; }
+      /* Sensitive values masking. Apply when html has .values-hidden */
+      html.values-hidden .sensitive-value {
+        filter: blur(6px);
+        -webkit-text-security: disc;
+        user-select: none;
+        position: relative;
+      }
+      html.values-hidden .sensitive-value::after {
+        content: '••••';
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-light);
+        letter-spacing: 0.075em;
+        pointer-events: none;
+      }
       :root {
         --primary: #2c6b5f;
         --primary-dark: #1f4b43;
@@ -422,7 +440,11 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         </li>
       </ul>
     </div>
-    <div class="d-none d-lg-flex align-items-center">
+    <div class="d-none d-lg-flex align-items-center" style="gap:.5rem;">
+      <button id="toggle-values-btn" type="button" class="values-toggle-btn" aria-pressed="false" aria-label="Show values">
+        <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
+        <span class="d-none d-xl-inline">Values</span>
+      </button>
       <div class="dropdown">
         <button class="btn user-chip dropdown-toggle" type="button" 
                 id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">

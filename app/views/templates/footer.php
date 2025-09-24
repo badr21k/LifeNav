@@ -73,6 +73,51 @@
     });
     document.addEventListener('DOMContentLoaded', function(){
       try { document.documentElement.classList.remove('theme-init'); } catch(_) {}
+      // Initialize values visibility from storage (default hidden)
+      var SHOW_KEY = 'lifenav_show_values';
+      var showValues = false;
+      try { showValues = localStorage.getItem(SHOW_KEY) === 'true'; } catch(_) {}
+      function applyShowValues(flag){
+        var html = document.documentElement;
+        if (flag) html.classList.remove('values-hidden'); else html.classList.add('values-hidden');
+        try { localStorage.setItem(SHOW_KEY, flag ? 'true' : 'false'); } catch(_) {}
+        // Update header button states
+        var btn = document.getElementById('toggle-values-btn');
+        if (btn){
+          btn.setAttribute('aria-pressed', String(flag));
+          btn.setAttribute('aria-label', flag ? 'Hide values' : 'Show values');
+          var ic = btn.querySelector('i');
+          if (ic) ic.className = flag ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+        }
+      }
+      applyShowValues(showValues);
+      var toggleBtn = document.getElementById('toggle-values-btn');
+      if (toggleBtn){
+        toggleBtn.addEventListener('click', function(){ showValues = !showValues; applyShowValues(showValues); });
+        toggleBtn.addEventListener('keydown', function(e){ if (e.key==='Enter' || e.key===' '){ e.preventDefault(); showValues = !showValues; applyShowValues(showValues); }});
+      }
+
+      // Mark numeric text nodes as sensitive automatically when inside elements marked via data-sv or common classes
+      function markSensitive(root){
+        var selectors = ['.sensitive-value','[data-sensitive]','[data-sv]','.summary-value','.stat-value','#income-value','#expenses-value'];
+        root.querySelectorAll(selectors.join(',')).forEach(function(el){ el.classList.add('sensitive-value'); });
+      }
+      markSensitive(document);
+      // Observe dynamic content changes (React renders)
+      try {
+        var obs = new MutationObserver(function(muts){ muts.forEach(function(m){ if (m.type==='childList') markSensitive(m.target); }); });
+        obs.observe(document.body, { childList: true, subtree: true });
+      } catch(_) {}
+
+      // Theme checkmarks
+      function updateThemeChecks(theme){
+        var ids = ['theme-light','theme-dark','theme-classic-dark','m-theme-light','m-theme-dark','m-theme-classic-dark'];
+        ids.forEach(function(id){ var el = document.getElementById(id); if (!el) return; el.classList.remove('active'); });
+        var map = { 'light': ['theme-light','m-theme-light'], 'dark': ['theme-dark','m-theme-dark'], 'classic-dark': ['theme-classic-dark','m-theme-classic-dark'] };
+        (map[theme]||[]).forEach(function(id){ var el = document.getElementById(id); if (el) el.classList.add('active'); });
+      }
+      try { var currentTheme = localStorage.getItem('lifenav_theme') || (document.documentElement.getAttribute('data-theme') || 'light'); updateThemeChecks(currentTheme); } catch(_) {}
+      window.addEventListener('themechange', function(ev){ try { updateThemeChecks(ev.detail && ev.detail.theme || 'light'); } catch(_) {} });
       var navEl = document.getElementById('navbarSupportedContent');
       var toggler = document.querySelector('.navbar-toggler');
       var header = document.querySelector('.navbar-modern');
