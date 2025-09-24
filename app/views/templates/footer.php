@@ -73,72 +73,18 @@
     });
     document.addEventListener('DOMContentLoaded', function(){
       try { document.documentElement.classList.remove('theme-init'); } catch(_) {}
-      // Money mask helper
-      var Money = (function(){
-        function currencySymbol(){
-          // Try to infer from page; default '$'
-          try {
-            var meta = document.querySelector('meta[name="currency-symbol"]');
-            if (meta && meta.content) return meta.content;
-          } catch(_){}
-          return '$';
-        }
-        function formatAmount(raw, code){
-          var num = Number(raw);
-          if (!isFinite(num)) return '';
-          try {
-            return new Intl.NumberFormat(undefined, { style: 'currency', currency: code || 'USD' }).format(num);
-          } catch(_) {
-            var sym = currencySymbol();
-            return sym + num.toFixed(2);
-          }
-        }
-        function maskText(prefix){
-          return (prefix || currencySymbol() + ' ') + 'X.XX';
-        }
-        function primeNode(el){
-          // If node has data-raw already, keep it; else try to extract number from text
-          if (!el.dataset) el.dataset = {};
-          if (!('raw' in el.dataset)){
-            var t = (el.textContent||'').replace(/\s+/g,' ').trim();
-            var m = t.match(/(-?\d+[\d,]*(?:\.\d+)?)/);
-            if (m) { el.dataset.raw = String(m[1]).replace(/,/g,''); }
-          }
-          if (!('currency' in el.dataset)){
-            // allow data-currency to be specified; default USD
-            el.dataset.currency = 'USD';
-          }
-          if (!('prefix' in el.dataset)){
-            // detect prefix text before number
-            var txt = (el.textContent||'');
-            var idx = txt.search(/-?\d/);
-            el.dataset.prefix = idx>0 ? txt.slice(0, idx) : currencySymbol()+ ' ';
-          }
-        }
-        function setHidden(el){
-          primeNode(el);
-          el.textContent = maskText(el.dataset.prefix);
-        }
-        function setVisible(el){
-          primeNode(el);
-          var amt = formatAmount(el.dataset.raw, el.dataset.currency);
-          // If prefix looked like 'CAD ' and formatAmount already includes symbol, prefer Intl formatting
-          el.textContent = amt || (el.dataset.prefix + (Number(el.dataset.raw)||0).toFixed(2));
-        }
-        return { setHidden, setVisible, primeNode };
-      })();
-
       // Initialize values visibility from storage (default hidden)
       var SHOW_KEY = 'lifenav_show_values';
       var showValues = false;
       try { showValues = localStorage.getItem(SHOW_KEY) === 'true'; } catch(_) {}
       function applyShowValues(flag){
-        // flag === true => show values
+        // flag === true => show values (remove masks)
         try { localStorage.setItem(SHOW_KEY, flag ? 'true' : 'false'); } catch(_) {}
         try {
-          document.querySelectorAll('.sensitive, .money, .sensitive-value, [data-money], [data-raw]').forEach(function(el){
+          document.querySelectorAll('.sensitive-value').forEach(function(el){
             if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
-            if (flag) Money.setVisible(el); else Money.setHidden(el);
+            if (flag) el.classList.remove('sv-blur');
+            else el.classList.add('sv-blur');
           });
         } catch(_) {}
         // Update header button states
@@ -178,8 +124,8 @@
 
       // Mark numeric text nodes as sensitive automatically when inside elements marked via data-sv or common classes
       function markSensitive(root){
-        var selectors = ['.sensitive-value','.sensitive','.money','[data-money]','[data-raw]','.summary-value','.stat-value','#income-value','#expenses-value'];
-        root.querySelectorAll(selectors.join(',')).forEach(function(el){ el.classList.add('sensitive-value'); Money.primeNode(el); });
+        var selectors = ['.sensitive-value','[data-sensitive]','[data-sv]','.summary-value','.stat-value','#income-value','#expenses-value'];
+        root.querySelectorAll(selectors.join(',')).forEach(function(el){ el.classList.add('sensitive-value'); });
       }
       markSensitive(document);
       // Observe dynamic content changes (React renders)
@@ -188,11 +134,11 @@
           muts.forEach(function(m){
             if (m.type==='childList') {
               markSensitive(m.target);
-              // Apply current state text to new nodes
+              // Apply current mask state to new nodes
               var current = localStorage.getItem(SHOW_KEY) === 'true';
               document.querySelectorAll('.sensitive-value').forEach(function(el){
                 if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
-                if (current) Money.setVisible(el); else Money.setHidden(el);
+                if (current) el.classList.remove('sv-blur'); else el.classList.add('sv-blur');
               });
             }
           });
@@ -208,9 +154,6 @@
         (map[theme]||[]).forEach(function(id){ var el = document.getElementById(id); if (el) el.classList.add('active'); });
       }
       try { var currentTheme = localStorage.getItem('lifenav_theme') || (document.documentElement.getAttribute('data-theme') || 'light'); updateThemeChecks(currentTheme); } catch(_) {}
-
-      // Initial apply
-      applyShowValues(showValues);
       window.addEventListener('themechange', function(ev){ try { updateThemeChecks(ev.detail && ev.detail.theme || 'light'); } catch(_) {} });
       var navEl = document.getElementById('navbarSupportedContent');
       var toggler = document.querySelector('.navbar-toggler');

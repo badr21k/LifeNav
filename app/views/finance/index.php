@@ -1086,21 +1086,21 @@
         <div class="summary-grid">
             <div class="summary-item">
                 <div class="summary-label">Income YTD</div>
-                <div class="summary-value"><span class="sensitive" id="income-ytd" data-raw="0">$X.XX</span></div>
+                <div class="summary-value" id="income-ytd">$0.00</div>
                 <div class="progress-bar">
                     <div class="progress-fill income" style="width: 0%;"></div>
                 </div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Total Debt</div>
-                <div class="summary-value"><span class="sensitive" id="total-debt" data-raw="0">$X.XX</span></div>
+                <div class="summary-value" id="total-debt">$0.00</div>
                 <div class="progress-bar">
                     <div class="progress-fill debt" style="width: 0%;"></div>
                 </div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Investments</div>
-                <div class="summary-value"><span class="sensitive" id="investments-value" data-raw="0">$X.XX</span></div>
+                <div class="summary-value" id="investments-value">$0.00</div>
                 <div class="progress-bar">
                     <div class="progress-fill investments" style="width: 0%;"></div>
                 </div>
@@ -1121,27 +1121,17 @@
             </div>
             <div class="summary-item">
                 <div class="summary-label">Income (This Month)</div>
-                <div class="summary-value"><span class="sensitive" id="income-month" data-raw="0">$X.XX</span></div>
+                <div class="summary-value" id="income-month">$0.00</div>
                 <div class="progress-bar">
                     <div class="progress-fill income" style="width: 0%;"></div>
                 </div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Expenses (This Month)</div>
-                <div class="summary-value"><span class="sensitive" id="expenses-month" data-raw="0">$X.XX</span></div>
+                <div class="summary-value" id="expenses-month">$0.00</div>
                 <div class="progress-bar">
                     <div class="progress-fill debt" style="width: 0%;"></div>
                 </div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-label">Weekly Budget Spent</div>
-                <div class="summary-value" data-sv-exempt>
-                    <span class="sensitive" id="weekly-spent" data-raw="0">$X.XX</span>
-                    {" / "}
-                    <span class="sv-exempt" id="weekly-budget" data-raw="0">$0.00</span>
-                </div>
-                <div class="progress-bar"><div class="progress-fill income" id="weekly-progress" style="width:0%"></div></div>
-                <div class="text-xs text-gray-500 mt-1" id="weekly-remaining-note">Remaining: <span class="sensitive" id="weekly-remaining" data-raw="0">$X.XX</span></div>
             </div>
         </div>
 
@@ -2154,40 +2144,18 @@
         }
 
         function updateSummaryCards() {
-            const show = (localStorage.getItem('lifenav_show_values') === 'true');
-            const ytd = calculateYTDIncome();
-            const debt = calculateTotalDebt();
-            const inv = calculateInvestmentsValue();
+            document.getElementById('income-ytd').textContent = formatCurrency(calculateYTDIncome());
+            document.getElementById('total-debt').textContent = formatCurrency(calculateTotalDebt());
+            document.getElementById('investments-value').textContent = formatCurrency(calculateInvestmentsValue());
             document.getElementById('savings-progress').textContent = calculateSavingsProgress() + '%';
             document.getElementById('month-shifts').textContent = calculateMonthShifts() + ' hrs';
-            // set data-raw and content according to visibility
-            const setMoney = (id, val) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.setAttribute('data-raw', String(val || 0));
-                if (show) {
-                    try { el.textContent = new Intl.NumberFormat('en-US', { style:'currency', currency: financeData.currency }).format(val||0); } catch(_) { el.textContent = '$' + (val||0).toFixed(2); }
-                } else {
-                    el.textContent = '$X.XX';
-                }
-            };
-            setMoney('income-ytd', ytd);
-            setMoney('total-debt', debt);
-            setMoney('investments-value', inv);
             // monthly figures
-            const inc = calculateMonthlyIncome();
-            const exp = calculateMonthlyExpenses();
-            setMoney('income-month', inc);
-            setMoney('expenses-month', exp);
-            // Weekly budget spent (placeholder calculations)
-            const weeklyBudget = (window.weeklyBudgetValue||0);
-            const weeklySpent = (window.weeklySpentValue||0);
-            setMoney('weekly-spent', weeklySpent);
-            const rem = Math.max(0, (weeklyBudget||0) - (weeklySpent||0));
-            const remainEl = document.getElementById('weekly-remaining');
-            if (remainEl){ remainEl.setAttribute('data-raw', String(rem)); remainEl.textContent = show ? new Intl.NumberFormat('en-US',{style:'currency',currency:financeData.currency}).format(rem) : '$X.XX'; }
-            const budgetEl = document.getElementById('weekly-budget'); if (budgetEl){ budgetEl.setAttribute('data-raw', String(weeklyBudget)); budgetEl.textContent = show ? new Intl.NumberFormat('en-US',{style:'currency',currency:financeData.currency}).format(weeklyBudget) : '$0.00'; }
-            const prog = document.getElementById('weekly-progress'); if (prog){ const pct = Math.min(((weeklySpent||0)/(weeklyBudget||1))*100, 100); prog.style.width = pct + '%'; }
+            if (financeData.monthSummary) {
+                const inc = (financeData.monthSummary.income_cents||0)/100;
+                const exp = (financeData.monthSummary.expenses_cents||0)/100;
+                const incEl = document.getElementById('income-month'); if(incEl) incEl.textContent = formatCurrency(inc);
+                const expEl = document.getElementById('expenses-month'); if(expEl) expEl.textContent = formatCurrency(exp);
+            }
             
             // Update progress bars
             document.querySelector('#income-ytd + .progress-bar .progress-fill').style.width = `${Math.min(calculateYTDIncome() / 10000 * 100, 100)}%`;
