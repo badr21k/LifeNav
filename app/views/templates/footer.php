@@ -73,42 +73,27 @@
     });
     document.addEventListener('DOMContentLoaded', function(){
       try { document.documentElement.classList.remove('theme-init'); } catch(_) {}
-      // Initialize amounts visibility from storage (default hidden)
-      var SHOW_KEY = 'lifenav_showAmounts';
-      // migrate from legacy key if present
-      try {
-        if (localStorage.getItem(SHOW_KEY) === null) {
-          var legacy = localStorage.getItem('lifenav_show_values');
-          if (legacy !== null) localStorage.setItem(SHOW_KEY, legacy);
-        }
-      } catch(_) {}
+      // Initialize values visibility from storage (default hidden)
+      var SHOW_KEY = 'lifenav_show_values';
       var showValues = false;
       try { showValues = localStorage.getItem(SHOW_KEY) === 'true'; } catch(_) {}
-      function maskElement(el){
-        if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
-        if (!el.dataset.origText) el.dataset.origText = el.textContent;
-        el.textContent = '$X.XX';
-      }
-      function unmaskElement(el){
-        if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
-        if (el.dataset && el.dataset.origText !== undefined) el.textContent = el.dataset.origText;
-      }
       function applyShowValues(flag){
-        // flag === true => show actual amounts; false => show literal placeholder
+        // flag === true => show values (remove masks)
         try { localStorage.setItem(SHOW_KEY, flag ? 'true' : 'false'); } catch(_) {}
         try {
           document.querySelectorAll('.sensitive-value').forEach(function(el){
-            if (flag) unmaskElement(el); else maskElement(el);
+            if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
+            if (flag) el.classList.remove('sv-blur');
+            else el.classList.add('sv-blur');
           });
         } catch(_) {}
         // Update header button states
         var btn = document.getElementById('toggle-values-btn');
         if (btn){
           btn.setAttribute('aria-pressed', String(flag));
-          btn.setAttribute('aria-label', flag ? 'Hide amounts' : 'Show amounts');
+          btn.setAttribute('aria-label', flag ? 'Hide values' : 'Show values');
           var ic = btn.querySelector('i');
           if (ic) ic.className = flag ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
-          btn.title = flag ? 'Hide amounts' : 'Show amounts';
         }
         // Update mobile items text/icon
         var items = [document.getElementById('toggle-values-mobile'), document.getElementById('m-toggle-values-mobile')];
@@ -116,7 +101,7 @@
           if (!el) return;
           var i = el.querySelector('i'); var s = el.querySelector('span');
           if (i) i.className = flag ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
-          if (s) s.textContent = flag ? 'Hide amounts' : 'Show amounts';
+          if (s) s.textContent = flag ? 'Hide values' : 'Show values';
         });
       }
       applyShowValues(showValues);
@@ -139,40 +124,22 @@
 
       // Mark numeric text nodes as sensitive automatically when inside elements marked via data-sv or common classes
       function markSensitive(root){
-        var selectors = ['.sensitive-value','[data-sensitive]','[data-sv]']; // keep targeted to avoid heavy scans
-        var result = [];
-        try {
-          root.querySelectorAll(selectors.join(',')).forEach(function(el){
-            if (el.dataset && el.dataset.svProcessed) return;
-            el.dataset.svProcessed = '1';
-            el.classList.add('sensitive-value');
-            result.push(el);
-          });
-        } catch(_) {}
-        return result;
+        var selectors = ['.sensitive-value','[data-sensitive]','[data-sv]','.summary-value','.stat-value','#income-value','#expenses-value'];
+        root.querySelectorAll(selectors.join(',')).forEach(function(el){ el.classList.add('sensitive-value'); });
       }
-      // Initial pass
-      var initiallyMarked = markSensitive(document);
-      initiallyMarked.forEach(function(el){ if (showValues) unmaskElement(el); else maskElement(el); });
+      markSensitive(document);
       // Observe dynamic content changes (React renders)
       try {
-        var queue = [];
-        var scheduled = false;
-        function flush(){
-          scheduled = false;
-          var batch = queue.splice(0, queue.length);
-          var current = localStorage.getItem(SHOW_KEY) === 'true';
-          batch.forEach(function(node){
-            if (node.nodeType !== 1) return; // ELEMENT_NODE
-            var marked = markSensitive(node);
-            marked.forEach(function(el){ if (current) unmaskElement(el); else maskElement(el); });
-          });
-        }
         var obs = new MutationObserver(function(muts){
           muts.forEach(function(m){
-            if (m.type==='childList' && m.addedNodes && m.addedNodes.length){
-              m.addedNodes.forEach(function(n){ queue.push(n); });
-              if (!scheduled){ scheduled = true; (window.requestAnimationFrame||setTimeout)(flush); }
+            if (m.type==='childList') {
+              markSensitive(m.target);
+              // Apply current mask state to new nodes
+              var current = localStorage.getItem(SHOW_KEY) === 'true';
+              document.querySelectorAll('.sensitive-value').forEach(function(el){
+                if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
+                if (current) el.classList.remove('sv-blur'); else el.classList.add('sv-blur');
+              });
             }
           });
         });
