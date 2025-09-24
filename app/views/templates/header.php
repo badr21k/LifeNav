@@ -440,9 +440,9 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       </ul>
     </div>
     <div class="d-none d-lg-flex align-items-center" style="gap:.5rem;">
-      <button id="toggle-values-btn" type="button" class="values-toggle-btn" aria-pressed="false" aria-label="Show values">
+      <button id="toggle-values-btn" type="button" class="values-toggle-btn" aria-pressed="false" aria-label="Show values" title="Show values (Shift+V)">
         <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
-        <span class="d-none d-xl-inline">Values</span>
+        <span id="values-btn-text" class="d-none d-xl-inline">Show values</span>
       </button>
       <div class="dropdown">
         <button class="btn user-chip dropdown-toggle" type="button" 

@@ -92,8 +92,11 @@
         if (btn){
           btn.setAttribute('aria-pressed', String(flag));
           btn.setAttribute('aria-label', flag ? 'Hide values' : 'Show values');
+          btn.setAttribute('title', flag ? 'Hide values (Shift+V)' : 'Show values (Shift+V)');
           var ic = btn.querySelector('i');
           if (ic) ic.className = flag ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+          var tx = document.getElementById('values-btn-text');
+          if (tx) tx.textContent = flag ? 'Hide values' : 'Show values';
         }
         // Update mobile items text/icon
         var items = [document.getElementById('toggle-values-mobile'), document.getElementById('m-toggle-values-mobile')];
