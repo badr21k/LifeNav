@@ -64,7 +64,8 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         background: var(--background);
         color: var(--text);
         font-family: var(--font-sans);
-        padding-top: var(--header-h);
+        /* Global offset so content clears the fixed header */
+        padding-top: calc(var(--header-h) + 1rem);
         line-height: 1.6;
         overflow-x: hidden;
       }
