@@ -89,6 +89,14 @@
           var ic = btn.querySelector('i');
           if (ic) ic.className = flag ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
         }
+        // Update mobile items text/icon
+        var items = [document.getElementById('toggle-values-mobile'), document.getElementById('m-toggle-values-mobile')];
+        items.forEach(function(el){
+          if (!el) return;
+          var i = el.querySelector('i'); var s = el.querySelector('span');
+          if (i) i.className = flag ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+          if (s) s.textContent = flag ? 'Hide values' : 'Show values';
+        });
       }
       applyShowValues(showValues);
       var toggleBtn = document.getElementById('toggle-values-btn');
@@ -96,6 +104,17 @@
         toggleBtn.addEventListener('click', function(){ showValues = !showValues; applyShowValues(showValues); });
         toggleBtn.addEventListener('keydown', function(e){ if (e.key==='Enter' || e.key===' '){ e.preventDefault(); showValues = !showValues; applyShowValues(showValues); }});
       }
+      // Mobile dropdown items
+      ['toggle-values-mobile','m-toggle-values-mobile'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('click', function(){ showValues = !showValues; applyShowValues(showValues); });
+      });
+      // Keyboard shortcut Shift+V
+      document.addEventListener('keydown', function(e){
+        if ((e.shiftKey && (e.key==='v' || e.key==='V')) && !e.defaultPrevented) {
+          showValues = !showValues; applyShowValues(showValues);
+        }
+      });
 
       // Mark numeric text nodes as sensitive automatically when inside elements marked via data-sv or common classes
       function markSensitive(root){

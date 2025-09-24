@@ -53,21 +53,9 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       html.theme-init *, html.theme-init *::before, html.theme-init *::after { transition: none !important; }
       /* Sensitive values masking. Apply when html has .values-hidden */
       html.values-hidden .sensitive-value {
-        filter: blur(6px);
-        -webkit-text-security: disc;
+        filter: blur(4px);
         user-select: none;
-        position: relative;
-      }
-      html.values-hidden .sensitive-value::after {
-        content: '••••';
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--text-light);
-        letter-spacing: 0.075em;
-        pointer-events: none;
+        transition: filter .2s ease;
       }
       :root {
         --primary: #2c6b5f;
@@ -432,6 +420,11 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
                 <i class="fa-solid fa-moon"></i>Classic Dark <i class="fa-solid fa-check check"></i>
               </button></li>
               <li><hr class="dropdown-divider"></li>
+              <li><button id="m-toggle-values-mobile" class="dropdown-item" type="button">
+                <i class="fa-solid fa-eye-slash"></i>
+                <span>Show values</span>
+              </button></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger" href="/logout">
                 <i class="fa-solid fa-right-from-bracket"></i>Logout
               </a></li>
@@ -461,6 +454,11 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           </button></li>
           <li><button id="theme-classic-dark" class="dropdown-item" type="button" onclick="setTheme('classic-dark')">
             <i class="fa-solid fa-moon"></i>Classic Dark <i class="fa-solid fa-check check"></i>
+          </button></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><button id="toggle-values-mobile" class="dropdown-item" type="button">
+            <i class="fa-solid fa-eye-slash"></i>
+            <span>Show values</span>
           </button></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item text-danger" href="/logout">
