@@ -423,7 +423,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
               <li><hr class="dropdown-divider"></li>
               <li><button id="m-toggle-values-mobile" class="dropdown-item" type="button">
                 <i class="fa-solid fa-eye-slash"></i>
-                <span>Show values</span>
+                <span>Show amounts</span>
               </button></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger" href="/logout">
@@ -435,9 +435,9 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       </ul>
     </div>
     <div class="d-none d-lg-flex align-items-center" style="gap:.5rem;">
-      <button id="toggle-values-btn" type="button" class="values-toggle-btn" aria-pressed="false" aria-label="Show values">
+      <button id="toggle-values-btn" type="button" class="values-toggle-btn" aria-pressed="false" aria-label="Show amounts">
         <i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
-        <span class="d-none d-xl-inline">Values</span>
+        <span class="d-none d-xl-inline">Amounts</span>
       </button>
       <div class="dropdown">
         <button class="btn user-chip dropdown-toggle" type="button" 
@@ -459,7 +459,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
           <li><hr class="dropdown-divider"></li>
           <li><button id="toggle-values-mobile" class="dropdown-item" type="button">
             <i class="fa-solid fa-eye-slash"></i>
-            <span>Show values</span>
+            <span>Show amounts</span>
           </button></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item text-danger" href="/logout">
