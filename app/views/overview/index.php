@@ -211,39 +211,6 @@
     updateProgress('tm-weekly-progress','tm-weekly-sub', weeklySpentTravel, weeklyBudgetTravel||1);
 
     renderCharts(expenses, payruns);
-
-    // Persist a monthly snapshot to backend (idempotent upsert)
-    try {
-      const catsNormal = Object.entries(groupBy(expenses.filter(e=> e.mode==='normal'), 'category')).map(([cat, rows])=>({
-        category: cat,
-        total: rows.reduce((s,e)=> s + (e.amount||0), 0)
-      }));
-      const catsTravel = Object.entries(groupBy(expenses.filter(e=> e.mode==='travel'), 'category')).map(([cat, rows])=>({
-        category: cat,
-        total: rows.reduce((s,e)=> s + (e.amount||0), 0)
-      }));
-      const payload = {
-        month: ym,
-        currency: baseCurrency,
-        totals: {
-          total_normal: totalNormal,
-          total_travel: totalTravel,
-          weekly_spent_normal: weeklySpentNormal,
-          weekly_spent_travel: weeklySpentTravel,
-          weekly_budget_normal: weeklyBudgetNormal,
-          weekly_budget_travel: weeklyBudgetTravel
-        },
-        categories_normal: catsNormal,
-        categories_travel: catsTravel,
-        kpis: {
-          earnings_ytd: (summary?.income_cents||0)/100,
-          total_debt: (summary?.debt_cents||0)/100,
-          investments_value: (summary?.investments_cents||0)/100,
-          savings_total: (summary?.savings_cents||0)/100
-        }
-      };
-      await fetch('/overview_api/save', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
-    } catch (_e) { /* no-op */ }
   }
 
   document.addEventListener('DOMContentLoaded', init);
