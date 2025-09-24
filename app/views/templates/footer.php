@@ -11,6 +11,27 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
 <script>
   (function(){
+    // Global theme init and toggle
+    var THEME_KEY = 'lifenav_theme';
+    try {
+      var saved = localStorage.getItem(THEME_KEY);
+      if (!saved) {
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        saved = prefersDark ? 'dark' : 'light';
+        localStorage.setItem(THEME_KEY, saved);
+      }
+      if (saved === 'dark') { document.documentElement.setAttribute('data-theme','dark'); }
+      else { document.documentElement.removeAttribute('data-theme'); }
+    } catch(_) {}
+    window.toggleTheme = function(){
+      try {
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        var next = isDark ? 'light' : 'dark';
+        if (next === 'dark') document.documentElement.setAttribute('data-theme','dark');
+        else document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem(THEME_KEY, next);
+      } catch(_){}
+    };
     document.addEventListener('DOMContentLoaded', function(){
       var navEl = document.getElementById('navbarSupportedContent');
       var toggler = document.querySelector('.navbar-toggler');
