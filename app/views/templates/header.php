@@ -575,6 +575,12 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav mb-2 mb-lg-0">
         <li class="nav-item">
+          <a class="nav-link<?= $active('overview') ?>" href="/overview" aria-current="<?= $ctrl === 'overview' ? 'page' : 'false' ?>">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Overview</span>
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link<?= $active('home') ?>" href="/home" aria-current="<?= $ctrl === 'home' ? 'page' : 'false' ?>">
             <i class="fa-solid fa-house"></i>
             <span>Home</span>
