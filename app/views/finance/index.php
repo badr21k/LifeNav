@@ -409,6 +409,7 @@
             width: 100%;
             max-width: 720px;
         }
+        .currency-search-group { position: relative; width: 100%; }
         .currency-selector-wrapper::before{
             content: "\f002"; /* fa-search */
             font-family: "Font Awesome 6 Free"; font-weight: 900;
@@ -425,6 +426,13 @@
             box-shadow: var(--shadow-sm);
         }
         .currency-typeahead:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(44,107,95,0.12); }
+        .currency-clear {
+            position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
+            background: transparent; border: none; color: var(--text-light);
+            width: 28px; height: 28px; border-radius: 9999px; cursor: pointer;
+            display: none; align-items: center; justify-content: center;
+        }
+        .currency-clear:hover { color: var(--primary); background: var(--primary-light); }
         .currency-selector { min-width: 8rem; }
         .currency-dropdown {
             position: absolute;
@@ -1085,8 +1093,13 @@
         <header class="header">
             <div class="controls">
                 <div class="currency-selector-wrapper">
-                    <input id="currency-search" class="currency-typeahead" placeholder="" aria-label="Search currency" autocomplete="off" />
-                    <div id="currency-dropdown" class="currency-dropdown" role="listbox" aria-label="Currencies"></div>
+                    <div class="currency-search-group" role="combobox" aria-haspopup="listbox" aria-owns="currency-dropdown" aria-expanded="false">
+                        <input id="currency-search" class="currency-typeahead" placeholder="" aria-label="Search currency" autocomplete="off" aria-autocomplete="list" />
+                        <button id="currency-clear" class="currency-clear" type="button" aria-label="Clear search">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                        <div id="currency-dropdown" class="currency-dropdown" role="listbox" aria-label="Currencies"></div>
+                    </div>
                     <select id="base-currency-selector" class="currency-selector" aria-label="Base currency">
                         <option value="USD">USD</option>
                         <option value="EUR">EUR</option>
