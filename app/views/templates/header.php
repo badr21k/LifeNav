@@ -52,12 +52,17 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
       /* Disable transitions during initial theme application to prevent flicker */
       html.theme-init *, html.theme-init *::before, html.theme-init *::after { transition: none !important; }
       /* Sensitive values blur-based mask. Applied via JS class sv-blur */
+      :root { --sv-blur: 6px; }
+      [data-theme="dark"], [data-theme="classic-dark"] { --sv-blur: 5px; }
       .sv-blur {
-        filter: blur(5px);
-        -webkit-filter: blur(5px);
+        filter: blur(var(--sv-blur)) saturate(1.05) contrast(.9);
+        -webkit-filter: blur(var(--sv-blur)) saturate(1.05) contrast(.9);
         user-select: none;
-        transition: filter .2s ease;
+        will-change: filter;
+        transition: filter 180ms ease;
       }
+      .sv-blur::selection { background: transparent; color: transparent; }
+      @media (prefers-reduced-motion: reduce) { .sv-blur { transition: none; } }
       :root {
         --primary: #2c6b5f;
         --primary-dark: #1f4b43;
