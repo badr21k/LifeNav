@@ -504,7 +504,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
             <button class="btn user-chip user-chip-mobile dropdown-toggle w-100" type="button" 
                     id="userMenuMobile" data-bs-toggle="dropdown" aria-expanded="false">
               <i class="fa-solid fa-user"></i>
-              <span class="sv-blur"><?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?></span>
+              <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
             </button>
             <ul class="dropdown-menu w-100" aria-labelledby="userMenuMobile">
               <li><h6 class="dropdown-header">Theme</h6></li>
@@ -540,7 +540,7 @@ $active = function(string $c, ?string $m = null) use ($ctrl, $method) {
         <button class="btn user-chip dropdown-toggle" type="button" 
                 id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
           <i class="fa-solid fa-user"></i>
-          <span class="sv-blur"><?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?></span>
+          <?= htmlspecialchars($_SESSION['auth']['name'] ?? ($_SESSION['auth']['email'] ?? '')) ?>
         </button>
         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
           <li><h6 class="dropdown-header">Theme</h6></li>
