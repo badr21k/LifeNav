@@ -83,8 +83,8 @@
         try {
           document.querySelectorAll('.sensitive-value').forEach(function(el){
             if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
-            if (flag) el.classList.remove('sv-masked');
-            else el.classList.add('sv-masked');
+            if (flag) el.classList.remove('sv-blur');
+            else el.classList.add('sv-blur');
           });
         } catch(_) {}
         // Update header button states
@@ -138,7 +138,7 @@
               var current = localStorage.getItem(SHOW_KEY) === 'true';
               document.querySelectorAll('.sensitive-value').forEach(function(el){
                 if (el.classList.contains('sv-exempt') || el.hasAttribute('data-sv-exempt')) return;
-                if (current) el.classList.remove('sv-masked'); else el.classList.add('sv-masked');
+                if (current) el.classList.remove('sv-blur'); else el.classList.add('sv-blur');
               });
             }
           });
