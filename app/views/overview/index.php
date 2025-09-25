@@ -238,6 +238,8 @@
 
   document.addEventListener('DOMContentLoaded', ()=>{
     const monthInput = document.getElementById('ov-month');
+    const prevBtn = document.getElementById('ov-prev');
+    const nextBtn = document.getElementById('ov-next');
     if (monthInput) {
       monthInput.value = currentMonth;
       monthInput.addEventListener('change', ()=>{
@@ -246,6 +248,9 @@
         init();
       });
     }
+    function addMonths(ym, delta){ const d=new Date(ym+'-01T00:00:00'); d.setMonth(d.getMonth()+delta); return d.toISOString().slice(0,7); }
+    if (prevBtn) prevBtn.addEventListener('click', ()=>{ currentMonth = addMonths(currentMonth, -1); localStorage.setItem('overviewMonth', currentMonth); if (monthInput) monthInput.value=currentMonth; init(); });
+    if (nextBtn) nextBtn.addEventListener('click', ()=>{ currentMonth = addMonths(currentMonth, +1); localStorage.setItem('overviewMonth', currentMonth); if (monthInput) monthInput.value=currentMonth; init(); });
     init();
   });
   // Live updates when Finance posts a pay_update for this month
