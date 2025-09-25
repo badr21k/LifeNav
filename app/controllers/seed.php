@@ -15,10 +15,10 @@ class seed {
     try { $st=$dbh->prepare("SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?"); $st->execute([$table,$col]); return (bool)$st->fetch(); } catch(Throwable $e){ return false; }
   }
 
-  // POST /seed/demo
+  // POST or GET /seed/demo (dev convenience)
   public function demo(){
     $this->requireAuth();
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') return $this->json(['error'=>'POST required'],405);
+    if (!in_array($_SERVER['REQUEST_METHOD'], ['POST','GET'], true)) return $this->json(['error'=>'Method not allowed'],405);
     try {
       $dbh = db_connect();
       $tenantId = $this->tenantId();
@@ -150,7 +150,7 @@ class seed {
       }
 
       // 6) Recompute overview cache for current month
-      try { $ch = curl_init(); curl_setopt_array($ch,[CURLOPT_URL=>urljoin('/overview_api/save'),CURLOPT_POST=>1,CURLOPT_RETURNTRANSFER=>true,CURLOPT_HTTPHEADER=>['Content-Type: application/json'],CURLOPT_POSTFIELDS=>json_encode(['month'=>$ym])]); curl_exec($ch); curl_close($ch); } catch(Throwable $e) {}
+      try { $ch = curl_init(); curl_setopt_array($ch,[CURLOPT_URL=>urljoin('/overview_api/save'),CURLOPT_POST=>1,CURLOPT_RETURNTRANSFER=>true,CURLOPT_HTTPHEADER=>['Content-Type: application/json'],CURLOPT_POSTFIELDS=>json_encode(['month'=>$ym])]); curl_exec($ch); curl_close($ch); } catch(Throwable $e) { /* ignore */ }
 
       return $this->json(['ok'=>true,'message'=>'Demo data seeded','month'=>$ym]);
     } catch (Throwable $e) { return $this->json(['ok'=>false,'error'=>$e->getMessage()],500); }
