@@ -8,35 +8,8 @@ class overview_api extends Controller {
   private function bodyJson(): array { $raw=file_get_contents('php://input'); $j=json_decode($raw,true); return is_array($j)?$j:[]; }
 
   private function ensureTable(PDO $dbh): void {
-    // If the table already exists, skip DDL to avoid TiDB dialect differences
-    try {
-      $st=$dbh->prepare('SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?');
-      $st->execute(['monthly_summaries']);
-      if ($st->fetch()) return;
-    } catch (Throwable $e) { /* proceed to attempt create below */ }
-    $dbh->exec('CREATE TABLE IF NOT EXISTS `monthly_summaries` (
-      `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-      `tenant_id` BIGINT NOT NULL,
-      `user_id` BIGINT NOT NULL,
-      `year_month` CHAR(7) NOT NULL,
-      `currency` VARCHAR(8) NULL,
-      `totals_json` TEXT NULL,
-      `categories_normal_json` TEXT NULL,
-      `categories_travel_json` TEXT NULL,
-      `kpis_json` TEXT NULL,
-      `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE KEY `uniq_tenant_user_month` (`tenant_id`,`user_id`,`year_month`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-    // helpful indexes on source tables (idempotent, ignore failures)
-    try { $dbh->exec('CREATE INDEX `idx_expenses_tenant_date` ON `expenses`(`tenant_id`, `date`)'); } catch (Throwable $e) {}
-    try { $dbh->exec('CREATE INDEX `idx_income_tenant_date` ON `income`(`tenant_id`, `date`)'); } catch (Throwable $e) {}
-    try { $dbh->exec('CREATE INDEX `idx_payruns_tenant_period_end` ON `pay_runs`(`tenant_id`, `period_end`)'); } catch (Throwable $e) {}
-    try { $dbh->exec('CREATE INDEX `idx_transfers_tenant_date` ON `transfers`(`tenant_id`, `date`)'); } catch (Throwable $e) {}
-    try { $dbh->exec('CREATE INDEX `idx_shifts_tenant_date` ON `shifts`(`tenant_id`, `date`)'); } catch (Throwable $e) {}
-    try { $dbh->exec('CREATE INDEX `idx_debts_tenant` ON `debts`(`tenant_id`)'); } catch (Throwable $e) {}
-    try { $dbh->exec('CREATE INDEX `idx_investment_accounts_tenant` ON `investment_accounts`(`tenant_id`)'); } catch (Throwable $e) {}
-    try { $dbh->exec('CREATE INDEX `idx_investments_tenant` ON `investments`(`tenant_id`)'); } catch (Throwable $e) {}
-    try { $dbh->exec('CREATE INDEX `idx_savings_goals_tenant` ON `savings_goals`(`tenant_id`)'); } catch (Throwable $e) {}
+    // Emergency compatibility: do nothing here. The table has been created manually in DB.
+    return;
   }
 
   // GET /overview_api/series
