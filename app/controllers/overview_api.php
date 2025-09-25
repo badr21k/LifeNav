@@ -8,6 +8,12 @@ class overview_api extends Controller {
   private function bodyJson(): array { $raw=file_get_contents('php://input'); $j=json_decode($raw,true); return is_array($j)?$j:[]; }
 
   private function ensureTable(PDO $dbh): void {
+    // If the table already exists, skip DDL to avoid TiDB dialect differences
+    try {
+      $st=$dbh->prepare('SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?');
+      $st->execute(['monthly_summaries']);
+      if ($st->fetch()) return;
+    } catch (Throwable $e) { /* proceed to attempt create below */ }
     $dbh->exec('CREATE TABLE IF NOT EXISTS `monthly_summaries` (
       `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
       `tenant_id` BIGINT NOT NULL,
@@ -18,7 +24,7 @@ class overview_api extends Controller {
       `categories_normal_json` TEXT NULL,
       `categories_travel_json` TEXT NULL,
       `kpis_json` TEXT NULL,
-      `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE KEY `uniq_tenant_user_month` (`tenant_id`,`user_id`,`year_month`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
     // helpful indexes on source tables (idempotent, ignore failures)
