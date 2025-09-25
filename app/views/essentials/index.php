@@ -1048,7 +1048,11 @@ function App() {
                     try { await apiSend('POST','/overview_api/save', { month: ym }); res = await apiGet(`/overview_api/get/${encodeURIComponent(ym)}`); } catch(__e) { res = null; }
                 }
                 if (!mounted) return;
-                setState(prev => ({ ...prev, paycheck: (res?.data?.totals?.paycheck_month||0) }));
+                let paycheck = (res?.data?.totals?.paycheck_month||0);
+                if (!paycheck) {
+                    try { const fs = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`); paycheck = (fs?.paycheck_cents||0)/100; } catch(_){ /* ignore */ }
+                }
+                setState(prev => ({ ...prev, paycheck }));
             } catch (e) {
                 console.warn('summary fetch failed', e);
             }
@@ -1060,10 +1064,17 @@ function App() {
                 (async ()=>{
                     try {
                         const r = await apiGet(`/overview_api/get/${encodeURIComponent(ym)}`);
-                        const p = r?.data?.totals?.paycheck_month || 0;
+                        let p = r?.data?.totals?.paycheck_month || 0;
+                        if (!p) { try { const fs = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`); p = (fs?.paycheck_cents||0)/100; } catch(_e){} }
                         setState(prev => ({ ...prev, paycheck: p }));
                     } catch(_e) {
-                        try { await apiSend('POST','/overview_api/save', { month: ym }); const r = await apiGet(`/overview_api/get/${encodeURIComponent(ym)}`); const p = r?.data?.totals?.paycheck_month || 0; setState(prev => ({ ...prev, paycheck: p })); } catch(__e) {}
+                        try {
+                            await apiSend('POST','/overview_api/save', { month: ym });
+                            const r = await apiGet(`/overview_api/get/${encodeURIComponent(ym)}`);
+                            let p = r?.data?.totals?.paycheck_month || 0;
+                            if (!p) { try { const fs = await apiGet(`/finance/api/summary?month=${encodeURIComponent(ym)}`); p = (fs?.paycheck_cents||0)/100; } catch(__e2){} }
+                            setState(prev => ({ ...prev, paycheck: p }));
+                        } catch(__e) {}
                     }
                 })();
             }
