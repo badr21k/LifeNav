@@ -61,11 +61,14 @@ class App {
     }
 
     public function parseUrl() {
-        $u = "{$_SERVER['REQUEST_URI']}";
-        //trims the trailing forward slash (rtrim), sanitizes URL, explode it by forward slash to get elements
-        $url = explode('/', filter_var(rtrim($u, '/'), FILTER_SANITIZE_URL));
-		unset($url[0]);
-		return $url;
+        // Use only the path component, ignore query string when routing
+        $u = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '/';
+        $path = parse_url($u, PHP_URL_PATH);
+        if ($path === false || $path === null) { $path = '/'; }
+        // trims the trailing forward slash (rtrim), sanitizes URL, explode it by forward slash to get elements
+        $url = explode('/', filter_var(rtrim($path, '/'), FILTER_SANITIZE_URL));
+        unset($url[0]);
+        return $url;
     }
 
 }
