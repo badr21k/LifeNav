@@ -2152,6 +2152,16 @@
             financeData.employers = (init.employers||[]).map(e=>({ id:String(e.id), name:e.name, paySchedule:e.pay_schedule, baseRate: parseFloat(e.base_rate||0) }));
             // map pay runs
             financeData.payRuns = (init.payruns||[]).map(p=>({ id:String(p.id), employerId:String(p.employer_id), periodStart:p.period_start, periodEnd:p.period_end, grossPay:(p.gross_cents||0)/100, netPay:(p.net_cents||0)/100 }));
+            // Fallback: if income_cents is zero or missing, derive it from current-month pay runs
+            try {
+                const incFromRuns = financeData.payRuns
+                    .filter(p => (p.periodEnd||'').slice(0,7) === ym)
+                    .reduce((sum,p)=> sum + Math.round((p.netPay||0)*100), 0);
+                if (!financeData.monthSummary || typeof financeData.monthSummary.income_cents !== 'number' || financeData.monthSummary.income_cents === 0) {
+                    const baseExp = (financeData.monthSummary && typeof financeData.monthSummary.expenses_cents==='number') ? financeData.monthSummary.expenses_cents : 0;
+                    financeData.monthSummary = { month: ym, income_cents: incFromRuns, expenses_cents: baseExp };
+                }
+            } catch(_e) {}
             // map shifts
             financeData.shifts = (init.shifts||[]).map(s=>({ id:String(s.id), date:s.date, startTime:s.start_time||'', endTime:s.end_time||'', breakMinutes: parseInt(s.break_minutes||0,10), employerId: s.employer_id?String(s.employer_id):null, role:s.role||'', rate: parseFloat(s.rate||0), tips: parseFloat(s.tips||0), location:s.location||'', notes:s.notes||'' }));
             // map debts
