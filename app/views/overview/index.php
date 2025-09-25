@@ -118,11 +118,11 @@
       const ck = wrap.querySelector('#ck-travel');
       const pref = localStorage.getItem('overviewShowTravel') === '1';
       ck.checked = pref;
-      ck.addEventListener('change', ()=>{ localStorage.setItem('overviewShowTravel', ck.checked?'1':'0'); try{ renderCharts.__last && renderCharts.apply(null, renderCharts.__last);}catch(_){} });
+      ck.addEventListener('change', ()=>{ localStorage.setItem('overviewShowTravel', ck.checked?'1':'0'); try{ if (renderCharts.__last) renderCharts(...renderCharts.__last); }catch(_){} });
     }catch(_e){}
   }
 
-  function renderCharts(catsNormal, catsTravel, kpis, currency){
+  async function renderCharts(catsNormal, catsTravel, kpis, currency){
     renderCharts.__last = [catsNormal, catsTravel, kpis, currency];
     const ctxCat = document.getElementById('chart-cats');
     const ctxWeek = document.getElementById('chart-week');
@@ -206,7 +206,7 @@
 
       // Charts
       injectTravelToggle();
-      renderCharts(data.categories_normal || {}, data.categories_travel || {}, k, currency);
+      await renderCharts(data.categories_normal || {}, data.categories_travel || {}, k, currency);
     } catch (e) {
       console.warn('overview load failed', e);
       try { const t=document.createElement('div'); t.className='toast error'; t.textContent='Overview failed to load'; document.body.appendChild(t); setTimeout(()=>t.remove(),3000);}catch(_){ }
