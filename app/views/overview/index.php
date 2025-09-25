@@ -105,31 +105,62 @@
   function updateProgress(idFill, idSub, spent, budget){ const pct=Math.min(100, budget>0? (spent/budget)*100 : 0); const f=document.getElementById(idFill); if(f) f.style.width=pct+'%'; const s=document.getElementById(idSub); if(s) s.textContent=(isFinite(pct)?pct.toFixed(1):'0.0')+'% used'; }
 
   let chCats, chWeek, chEarn;
-  function renderCharts(catsNormal, kpis, currency){
+  function injectTravelToggle(){
+    try{
+      const host = document.getElementById('chart-cats')?.parentElement;
+      if (!host || document.getElementById('toggle-travel-visible')) return;
+      const wrap = document.createElement('div');
+      wrap.style.display='flex'; wrap.style.justifyContent='flex-end'; wrap.style.marginBottom='6px';
+      wrap.innerHTML = `<label id="toggle-travel-visible" style="font-size:.875rem; display:flex; align-items:center; gap:.5rem; cursor:pointer">
+        <input type="checkbox" id="ck-travel" /> Show Travel Categories
+      </label>`;
+      host.parentElement.insertBefore(wrap, host);
+      const ck = wrap.querySelector('#ck-travel');
+      const pref = localStorage.getItem('overviewShowTravel') === '1';
+      ck.checked = pref;
+      ck.addEventListener('change', ()=>{ localStorage.setItem('overviewShowTravel', ck.checked?'1':'0'); try{ renderCharts.__last && renderCharts.apply(null, renderCharts.__last);}catch(_){} });
+    }catch(_e){}
+  }
+
+  function renderCharts(catsNormal, catsTravel, kpis, currency){
+    renderCharts.__last = [catsNormal, catsTravel, kpis, currency];
     const ctxCat = document.getElementById('chart-cats');
     const ctxWeek = document.getElementById('chart-week');
     const ctxEarn = document.getElementById('chart-earnings');
     const palette = ['#2c6b5f','#60a5fa','#34d399','#f472b6','#f59e0b','#f97316','#22d3ee','#a78bfa','#ef4444'];
 
-    // Categories doughnut (Normal)
+    // Categories doughnut (Normal + optional Travel overlay)
     const labelsC = Object.keys(catsNormal||{});
     const sumsC = labelsC.map(k=> catsNormal[k]||0);
+    const showTravel = localStorage.getItem('overviewShowTravel') === '1';
+    const travelAligned = labelsC.map(k => (catsTravel||{})[k]||0);
     if (chCats) chCats.destroy();
-    chCats = new Chart(ctxCat, { type:'doughnut', data:{ labels: labelsC, datasets:[{ data: sumsC, backgroundColor: palette }] }, options:{ plugins:{ legend:{ display:true, position:'bottom' } } } });
+    const datasets=[{ data: sumsC, backgroundColor: palette, label:'Normal' }];
+    if (showTravel) datasets.push({ data: travelAligned, backgroundColor: palette.map(c=>c+'99'), label:'Travel' });
+    chCats = new Chart(ctxCat, { type:'doughnut', data:{ labels: labelsC, datasets }, options:{ plugins:{ legend:{ display:true, position:'bottom' } } } });
 
     // Weekly Spending Trend (if kpis can supply; fallback to static zeros)
     const days = [...Array(7)].map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(6-i)); return d; });
     const labelDays = days.map(d=> d.toLocaleDateString(undefined,{ month:'short', day:'numeric' }));
-    const sumsD = new Array(7).fill(0); // Server can be extended to provide recent daily; placeholder for now
+    const sumsD = Array.isArray(kpis?.week_series) && kpis.week_series.length===7 ? kpis.week_series : new Array(7).fill(0);
     if (chWeek) chWeek.destroy();
     chWeek = new Chart(ctxWeek, { type:'line', data:{ labels: labelDays, datasets:[{ label:'Spent', data:sumsD, borderColor:'#2c6b5f', backgroundColor:'rgba(44,107,95,0.15)', fill:true, tension:.35, pointRadius:2 }] }, options:{ plugins:{ legend:{ display:false } }, scales:{ y:{ ticks:{ callback:v=> v.toLocaleString() } } } } });
 
     // Earnings monthly trend — optional extension; render empty for now
-    const months = [...Array(6)].map((_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-(5-i)); return d; });
-    const labelM = months.map(d=> d.toLocaleDateString(undefined,{ month:'short', year:'2-digit' }));
-    const sumsM = new Array(6).fill(0);
-    if (chEarn) chEarn.destroy();
-    chEarn = new Chart(ctxEarn, { type:'bar', data:{ labels: labelM, datasets:[{ label:'Net Pay', data:sumsM, backgroundColor:'#60a5fa' }] }, options:{ plugins:{ legend:{ display:false } }, scales:{ y:{ ticks:{ callback:v=> v.toLocaleString() } } } } });
+    // Monthly Earnings Trend: fetch series from server (from first input month to today)
+    try {
+      const s = await getJSON('/overview_api/series');
+      const labels = (s?.data?.labels)||[];
+      const series = (s?.data?.paycheck)||[];
+      if (chEarn) chEarn.destroy();
+      chEarn = new Chart(ctxEarn, { type:'bar', data:{ labels, datasets:[{ label:'Net Pay', data:series, backgroundColor:'#60a5fa' }] }, options:{ plugins:{ legend:{ display:false } }, scales:{ y:{ ticks:{ callback:v=> v.toLocaleString() } } } } });
+    } catch(_e) {
+      const months = [...Array(6)].map((_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-(5-i)); return d; });
+      const labelM = months.map(d=> d.toLocaleDateString(undefined,{ month:'short', year:'2-digit' }));
+      const sumsM = new Array(6).fill(0);
+      if (chEarn) chEarn.destroy();
+      chEarn = new Chart(ctxEarn, { type:'bar', data:{ labels: labelM, datasets:[{ label:'Net Pay', data:sumsM, backgroundColor:'#60a5fa' }] }, options:{ plugins:{ legend:{ display:false } }, scales:{ y:{ ticks:{ callback:v=> v.toLocaleString() } } } } });
+    }
   }
 
   async function init(){
@@ -174,7 +205,8 @@
       updateProgress('tm-weekly-progress','tm-weekly-sub', (k.spent_this_week_travel)||0, (k.weekly_budget_travel)||1);
 
       // Charts
-      renderCharts(data.categories_normal || {}, k, currency);
+      injectTravelToggle();
+      renderCharts(data.categories_normal || {}, data.categories_travel || {}, k, currency);
     } catch (e) {
       console.warn('overview load failed', e);
       try { const t=document.createElement('div'); t.className='toast error'; t.textContent='Overview failed to load'; document.body.appendChild(t); setTimeout(()=>t.remove(),3000);}catch(_){ }

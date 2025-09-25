@@ -33,6 +33,69 @@ class overview_api extends Controller {
     try { $dbh->exec('CREATE INDEX idx_savings_goals_tenant ON savings_goals(tenant_id)'); } catch (Throwable $e) {}
   }
 
+  // GET /overview_api/series
+  // Returns monthly aggregates from the earliest activity month to current for the tenant
+  public function series() {
+    $this->requireAuth();
+    try {
+      $dbh = db_connect();
+      $tenantId = $this->tenantId();
+
+      $minDates = [];
+      if ($this->tableExists($dbh,'expenses')) {
+        $st=$dbh->prepare("SELECT MIN(date) m FROM expenses WHERE tenant_id=?"); $st->execute([$tenantId]); $r=$st->fetch(); if(!empty($r['m'])) $minDates[]=$r['m'];
+      }
+      if ($this->tableExists($dbh,'pay_runs')) {
+        $st=$dbh->prepare("SELECT MIN(period_end) m FROM pay_runs WHERE tenant_id=?"); $st->execute([$tenantId]); $r=$st->fetch(); if(!empty($r['m'])) $minDates[]=$r['m'];
+      }
+      if ($this->tableExists($dbh,'income')) {
+        $st=$dbh->prepare("SELECT MIN(date) m FROM income WHERE tenant_id=?"); $st->execute([$tenantId]); $r=$st->fetch(); if(!empty($r['m'])) $minDates[]=$r['m'];
+      }
+
+      $startYm = $minDates ? date('Y-m', strtotime(min($minDates))) : date('Y-m');
+      $endYm = date('Y-m');
+
+      // Grouped sums per month
+      $incomeByYm = [];
+      if ($this->tableExists($dbh,'income')) {
+        if ($this->hasColumn($dbh,'income','amount_cents')) {
+          $q=$dbh->prepare("SELECT DATE_FORMAT(date,'%Y-%m') ym, SUM(amount_cents) s FROM income WHERE tenant_id=? GROUP BY ym");
+          $q->execute([$tenantId]); foreach($q->fetchAll() as $row){ $incomeByYm[$row['ym']] = ((int)$row['s']); }
+        } elseif ($this->hasColumn($dbh,'income','amount')) {
+          $q=$dbh->prepare("SELECT DATE_FORMAT(date,'%Y-%m') ym, SUM(amount) s FROM income WHERE tenant_id=? GROUP BY ym");
+          $q->execute([$tenantId]); foreach($q->fetchAll() as $row){ $incomeByYm[$row['ym']] = (int)round(((float)$row['s'])*100); }
+        }
+      }
+
+      $payByYm = [];
+      if ($this->tableExists($dbh,'pay_runs')) {
+        $q=$dbh->prepare("SELECT DATE_FORMAT(period_end,'%Y-%m') ym, SUM(net_cents) s FROM pay_runs WHERE tenant_id=? GROUP BY ym");
+        $q->execute([$tenantId]); foreach($q->fetchAll() as $row){ $payByYm[$row['ym']] = ((int)$row['s']); }
+      }
+
+      $spendByYm = [];
+      if ($this->tableExists($dbh,'expenses')) {
+        $q=$dbh->prepare("SELECT DATE_FORMAT(date,'%Y-%m') ym, SUM(amount_cents) s FROM expenses WHERE tenant_id=? GROUP BY ym");
+        $q->execute([$tenantId]); foreach($q->fetchAll() as $row){ $spendByYm[$row['ym']] = ((int)$row['s']); }
+      }
+
+      // Build continuous series from startYm to endYm
+      $labels=[]; $income=[]; $paycheck=[]; $spending=[];
+      $cursor = strtotime($startYm.'-01');
+      $end = strtotime($endYm.'-01');
+      while ($cursor <= $end) {
+        $ym = date('Y-m', $cursor);
+        $labels[] = $ym;
+        $income[] = (($incomeByYm[$ym] ?? 0) + ($payByYm[$ym] ?? 0))/100; // total income = income + payruns
+        $paycheck[] = ($payByYm[$ym] ?? 0)/100; // paycheck = payruns only
+        $spending[] = ($spendByYm[$ym] ?? 0)/100;
+        $cursor = strtotime('+1 month', $cursor);
+      }
+
+      return $this->json(['ok'=>true,'data'=>compact('labels','income','paycheck','spending')]);
+    } catch (Throwable $e) { return $this->json(['ok'=>false,'error'=>$e->getMessage()],500); }
+  }
+
   // GET /overview_api/diagnose/<YYYY-MM>
   public function diagnose($monthParam=null) {
     $this->requireAuth();
