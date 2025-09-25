@@ -187,6 +187,10 @@
     const ch = new BroadcastChannel('lifenav_finance');
     ch.onmessage = (ev)=>{ if (ev?.data?.type==='pay_update' && ev?.data?.month===ym) { init(); } };
   } catch(_e){}
+  try {
+    const ch2 = new BroadcastChannel('lifenav_spending');
+    ch2.onmessage = (ev)=>{ if (ev?.data?.type==='spend_update' && ev?.data?.month===ym) { init(); } };
+  } catch(_e){}
 })();
 </script>
 

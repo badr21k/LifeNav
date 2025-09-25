@@ -1236,7 +1236,7 @@ function App() {
     };
 
     // Save expense (DB)
-    const saveExpense = async () => {
+    const saveExpense = async (e) => {
         const amountInput = document.getElementById('amount');
         const dateInput = document.getElementById('date');
         const recurringInput = document.getElementById('recurring');
@@ -1285,6 +1285,7 @@ function App() {
             else await apiSend('POST', '/essentials/api/expenses', payload);
             await loadEssentials();
             try { await apiSend('POST','/overview_api/save', { month: new Date().toISOString().slice(0,7) }); } catch(_e){}
+            try { const ch=new BroadcastChannel('lifenav_spending'); ch.postMessage({type:'spend_update', month: new Date().toISOString().slice(0,7)}); ch.close?.(); } catch(_bc){}
             setState(prev=>({ ...prev, modal: null, editingId: null, fromRecurringList: false, error: null }));
         } catch (e) { setState(prev=>({ ...prev, error: e.message })); }
     };
@@ -1296,7 +1297,7 @@ function App() {
 
     // Delete expense (DB)
     const deleteExpense = async (id) => {
-        try { await apiSend('DELETE', `/essentials/api/expenses/${encodeURIComponent(id)}`); await loadEssentials(); try{ await apiSend('POST','/overview_api/save', { month: new Date().toISOString().slice(0,7) }); }catch(_e){} }
+        try { await apiSend('DELETE', `/essentials/api/expenses/${encodeURIComponent(id)}`); await loadEssentials(); try{ await apiSend('POST','/overview_api/save', { month: new Date().toISOString().slice(0,7) }); }catch(_e){} try { const ch=new BroadcastChannel('lifenav_spending'); ch.postMessage({type:'spend_update', month: new Date().toISOString().slice(0,7)}); ch.close?.(); } catch(_bc){} }
         catch (e) { console.error(e); }
     };
 
