@@ -98,6 +98,7 @@
 (function(){
   const ym = new Date().toISOString().slice(0,7);
   const fmt = (amt, cur) => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur||'CAD' }).format(amt||0);
+  const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
 
   async function getJSON(url){ const r=await fetch(url,{credentials:'same-origin'}); if(!r.ok) throw new Error('net'); return r.json(); }
   function setText(id, text){ const el=document.getElementById(id); if(el) el.textContent = text; }
@@ -133,7 +134,7 @@
 
   async function init(){
     try {
-      try { await fetch('/overview_api/save', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month: ym }) }); } catch(_e){}
+      try { await fetch('/overview_api/save', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN }, body: JSON.stringify({ month: ym }) }); } catch(_e){}
       const res = await getJSON(`/overview_api/get/${encodeURIComponent(ym)}`);
       const data = res?.data || {};
       const currency = data.currency || 'CAD';
@@ -163,6 +164,7 @@
       renderCharts(data.categories_normal || {}, k, currency);
     } catch (e) {
       console.warn('overview load failed', e);
+      try { const t=document.createElement('div'); t.className='toast error'; t.textContent='Overview failed to load'; document.body.appendChild(t); setTimeout(()=>t.remove(),3000);}catch(_){ }
     }
   }
 

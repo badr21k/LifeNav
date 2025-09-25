@@ -27,6 +27,49 @@ class overview_api extends Controller {
     try { $dbh->exec('CREATE INDEX idx_payruns_tenant_period_end ON pay_runs(tenant_id, period_end)'); } catch (Throwable $e) {}
   }
 
+  // GET /overview_api/diagnose/<YYYY-MM>
+  public function diagnose($monthParam=null) {
+    $this->requireAuth();
+    try {
+      $dbh=db_connect(); $tenantId=$this->tenantId();
+      $month = $monthParam && preg_match('/^\d{4}-\d{2}$/',$monthParam) ? $monthParam : date('Y-m');
+      $start=$month.'-01'; $end=date('Y-m-d', strtotime($start.' +1 month'));
+
+      $out = [ 'tenant_id'=>$tenantId, 'month'=>$month ];
+      // pay_runs
+      if ($this->tableExists($dbh,'pay_runs')) {
+        $st=$dbh->prepare('SELECT COALESCE(SUM(net_cents),0) s FROM pay_runs WHERE tenant_id=? AND period_end>=? AND period_end<?');
+        $st->execute([$tenantId,$start,$end]); $out['pay_runs_net_cents']=(int)($st->fetch()['s']??0);
+      }
+      // income
+      if ($this->tableExists($dbh,'income')) {
+        if ($this->hasColumn($dbh,'income','amount_cents')) {
+          $st=$dbh->prepare('SELECT COALESCE(SUM(amount_cents),0) s FROM income WHERE tenant_id=? AND date>=? AND date<?');
+          $st->execute([$tenantId,$start,$end]); $out['income_amount_cents']=(int)($st->fetch()['s']??0);
+        } elseif ($this->hasColumn($dbh,'income','amount')) {
+          $st=$dbh->prepare('SELECT COALESCE(SUM(amount),0) s FROM income WHERE tenant_id=? AND date>=? AND date<?');
+          $st->execute([$tenantId,$start,$end]); $out['income_amount_cents']=(int)round(((float)($st->fetch()['s']??0))*100);
+        }
+      }
+      // expenses
+      if ($this->tableExists($dbh,'expenses')) {
+        $st=$dbh->prepare('SELECT COALESCE(SUM(amount_cents),0) s FROM expenses WHERE tenant_id=? AND date>=? AND date<?');
+        $st->execute([$tenantId,$start,$end]); $out['expenses_amount_cents']=(int)($st->fetch()['s']??0);
+      }
+      // debts
+      if ($this->tableExists($dbh,'debts')) {
+        if ($this->hasColumn($dbh,'debts','min_payment_cents')) {
+          $st=$dbh->prepare('SELECT COALESCE(SUM(min_payment_cents),0) s FROM debts WHERE tenant_id=?');
+          $st->execute([$tenantId]); $out['debts_min_cents']=(int)($st->fetch()['s']??0);
+        } elseif ($this->hasColumn($dbh,'debts','min_payment')) {
+          $st=$dbh->prepare('SELECT COALESCE(SUM(min_payment),0) s FROM debts WHERE tenant_id=?');
+          $st->execute([$tenantId]); $out['debts_min_cents']=(int)round(((float)($st->fetch()['s']??0))*100);
+        }
+      }
+      return $this->json(['ok'=>true,'data'=>$out]);
+    } catch (Throwable $e) { return $this->json(['ok'=>false,'error'=>$e->getMessage()],500); }
+  }
+
   private function tableExists(PDO $dbh, string $table): bool {
     try { $st=$dbh->query("SHOW TABLES LIKE ".$dbh->quote($table)); return (bool)$st->fetch(); } catch (Throwable $e) { return false; }
   }
