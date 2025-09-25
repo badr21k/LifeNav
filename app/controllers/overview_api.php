@@ -25,6 +25,12 @@ class overview_api extends Controller {
     try { $dbh->exec('CREATE INDEX idx_expenses_tenant_date ON expenses(tenant_id, date)'); } catch (Throwable $e) {}
     try { $dbh->exec('CREATE INDEX idx_income_tenant_date ON income(tenant_id, date)'); } catch (Throwable $e) {}
     try { $dbh->exec('CREATE INDEX idx_payruns_tenant_period_end ON pay_runs(tenant_id, period_end)'); } catch (Throwable $e) {}
+    try { $dbh->exec('CREATE INDEX idx_transfers_tenant_date ON transfers(tenant_id, date)'); } catch (Throwable $e) {}
+    try { $dbh->exec('CREATE INDEX idx_shifts_tenant_date ON shifts(tenant_id, date)'); } catch (Throwable $e) {}
+    try { $dbh->exec('CREATE INDEX idx_debts_tenant ON debts(tenant_id)'); } catch (Throwable $e) {}
+    try { $dbh->exec('CREATE INDEX idx_investment_accounts_tenant ON investment_accounts(tenant_id)'); } catch (Throwable $e) {}
+    try { $dbh->exec('CREATE INDEX idx_investments_tenant ON investments(tenant_id)'); } catch (Throwable $e) {}
+    try { $dbh->exec('CREATE INDEX idx_savings_goals_tenant ON savings_goals(tenant_id)'); } catch (Throwable $e) {}
   }
 
   // GET /overview_api/diagnose/<YYYY-MM>
@@ -171,6 +177,23 @@ class overview_api extends Controller {
         $ts->execute([$tenantId]); $row=$ts->fetch();
         if ($row) { $weekly_budget_normal_cents = isset($row['weekly_budget_normal_cents'])?(int)$row['weekly_budget_normal_cents']:null; $weekly_budget_travel_cents = isset($row['weekly_budget_travel_cents'])?(int)$row['weekly_budget_travel_cents']:null; }
       }
+      // Last 7 days spending series (total across modes)
+      $weekSeries = [];
+      try {
+        for ($i = 6; $i >= 0; $i--) {
+          $d = date('Y-m-d', strtotime('-'.$i.' days'));
+          $sum = 0;
+          if ($this->tableExists($dbh,'expenses')) {
+            $hasCount = $this->hasColumn($dbh,'expenses','count_weekly');
+            $stmt = $hasCount
+              ? $dbh->prepare('SELECT COALESCE(SUM(amount_cents),0) s FROM expenses WHERE tenant_id=? AND date=? AND (count_weekly=1 OR count_weekly IS NULL)')
+              : $dbh->prepare('SELECT COALESCE(SUM(amount_cents),0) s FROM expenses WHERE tenant_id=? AND date=?');
+            $stmt->execute([$tenantId,$d]); $sum = (int)($stmt->fetch()['s'] ?? 0);
+          }
+          $weekSeries[] = round($sum/100,2);
+        }
+      } catch (Throwable $e) { $weekSeries = array_fill(0,7,0); }
+
       // Optional snapshots (best-effort)
       $debtsTotal = 0; $investmentsTotal = 0; $savingsTotal = 0;
       if ($this->tableExists($dbh,'debts')) {
@@ -205,6 +228,8 @@ class overview_api extends Controller {
         'debts_total' => $debtsTotal,
         'investments_total' => $investmentsTotal,
         'savings_total' => $savingsTotal,
+        // Weekly series
+        'week_series' => $weekSeries,
       ];
 
       $totals = [
@@ -237,14 +262,23 @@ class overview_api extends Controller {
       $month = $monthParam && preg_match('/^\d{4}-\d{2}$/',$monthParam) ? $monthParam : trim($_GET['month'] ?? ''); if (!preg_match('/^\d{4}-\d{2}$/',$month)) $month = date('Y-m');
       $st=$dbh->prepare('SELECT * FROM monthly_summaries WHERE tenant_id=? AND user_id=? AND year_month=? LIMIT 1');
       $st->execute([$tenantId,$userId,$month]); $row=$st->fetch();
-      if (!$row) return $this->json(['ok'=>true,'data'=>[
-        'year_month'=>$month,
-        'currency'=>$this->defaultCurrency($dbh,$tenantId),
-        'totals'=>['income_month'=>0,'spending_month'=>0,'net_month'=>0,'paycheck_month'=>0],
-        'categories_normal'=>new stdClass(),
-        'categories_travel'=>new stdClass(),
-        'kpis'=>['weekly_budget'=>0,'spent_this_week'=>0,'remaining_week'=>0]
-      ]]);
+      if (!$row) {
+        // Even if monthly_summaries is empty, return budgets from tenant_settings for UI
+        $wbN = 0; $wbT = 0;
+        if ($this->tableExists($dbh,'tenant_settings')) {
+          $ts=$dbh->prepare('SELECT weekly_budget_normal_cents, weekly_budget_travel_cents FROM tenant_settings WHERE tenant_id=?');
+          $ts->execute([$tenantId]); $r=$ts->fetch();
+          if ($r) { $wbN = isset($r['weekly_budget_normal_cents']) ? ((int)$r['weekly_budget_normal_cents'])/100 : 0; $wbT = isset($r['weekly_budget_travel_cents']) ? ((int)$r['weekly_budget_travel_cents'])/100 : 0; }
+        }
+        return $this->json(['ok'=>true,'data'=>[
+          'year_month'=>$month,
+          'currency'=>$this->defaultCurrency($dbh,$tenantId),
+          'totals'=>['income_month'=>0,'spending_month'=>0,'net_month'=>0,'paycheck_month'=>0],
+          'categories_normal'=>new stdClass(),
+          'categories_travel'=>new stdClass(),
+          'kpis'=>['weekly_budget'=>$wbN,'weekly_budget_travel'=>$wbT,'spent_this_week'=>0,'spent_this_week_travel'=>0,'remaining_week'=>$wbN]
+        ]]);
+      }
       $data=[
         'year_month'=>$row['year_month'],
         'currency'=>$row['currency'] ?: $this->defaultCurrency($dbh,$tenantId),
