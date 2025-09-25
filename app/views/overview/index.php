@@ -1,19 +1,21 @@
 <?php require 'app/views/templates/header.php'; ?>
 
 <style>
-  .overview-container { padding: 1rem; max-width: 1200px; margin: 0 auto; }
-  .ov-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1rem; }
-  .ov-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 1rem; }
-  .ov-title { font-weight: 700; margin-bottom: .5rem; color: var(--text); }
-  .ov-kpi { font-size: 1.5rem; font-weight: 800; color: var(--text); }
-  .ov-sub { color: var(--text-light); font-size: .9rem; }
-  .ov-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .ov-flex { display: flex; align-items: center; gap: .5rem; }
-  .ov-progress { height: .5rem; background: var(--primary-light); border-radius: var(--radius-sm); overflow: hidden; margin-top: .5rem; }
-  .ov-progress > div { height: 100%; background: var(--primary); width: 0%; transition: width .3s ease; }
-  .chart-card canvas { width: 100%; height: 260px; }
-  @media (max-width: 992px){ .ov-row { grid-template-columns: 1fr; } }
-  @media (max-width: 640px){ .ov-grid { gap: .75rem; } .chart-card canvas { height: 220px; } }
+  :root { --bg:#0c1412; --card:#0f1a17; --text:#e6f1ee; --muted:#a7c1bb; --chip-bg:#0c1f19; --primary:#2c6b5f; --border:#17312a; }
+  .container{ max-width:1200px; margin:0 auto; padding:16px; }
+  .grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:14px; }
+  .ov-card{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow: 0 8px 24px rgba(0,0,0,.24); }
+  .ov-title{ color:var(--muted); font-weight:700; margin-bottom:10px; letter-spacing:.2px; text-transform:none; }
+  .ov-kpi{ font-size:1.35rem; font-weight:800; color:var(--text); }
+  .ov-sub{ color:var(--muted); font-size:.85rem; }
+  .ov-flex{ display:flex; justify-content:space-between; align-items:center; color:var(--text); gap:8px; }
+  .ov-progress{ height:8px; border-radius:999px; background:#153830; overflow:hidden; margin-top:8px; }
+  .ov-progress>div{ height:100%; width:0%; background:var(--primary); transition:width .35s ease; }
+  .kpi-row{ display:flex; gap:12px; align-items:center; color:var(--muted); font-size:.85rem; }
+  .kpi-row strong{ color:var(--text); }
+  canvas{ width:100%; height:260px; }
+  @media (max-width: 900px){ .grid{ grid-template-columns: repeat(6,1fr); } }
+  @media (max-width: 640px){ .grid{ grid-template-columns: repeat(2,1fr); } canvas{ height:220px; } }
 </style>
 
 <div class="overview-container">
@@ -121,7 +123,7 @@
 
   async function getJSON(url){ const r=await fetch(url,{credentials:'same-origin'}); if(!r.ok) throw new Error('net'); return r.json(); }
   function setText(id, text){ const el=document.getElementById(id); if(el) el.textContent = text; }
-  function updateProgress(idFill, idSub, spent, budget){ const pct=Math.min(100, budget>0? (spent/budget)*100 : 0); const f=document.getElementById(idFill); if(f) f.style.width=pct+'%'; const s=document.getElementById(idSub); if(s) s.textContent=(isFinite(pct)?pct.toFixed(1):'0.0')+'% used'; }
+  function updateProgress(idFill, idSub, spent, budget){ const pct=Math.min(100, budget>0? (spent/budget)*100 : 0); const f=document.getElementById(idFill); if(f) f.style.width=pct+'%'; const s=document.getElementById(idSub); if(s) s.textContent=`${isFinite(pct)?pct.toFixed(1):'0.0'}% used / ${fmt(budget)}`; }
 
   let chCats, chWeek, chEarn;
   function injectTravelToggle(){
@@ -135,6 +137,7 @@
       </label>`;
       host.parentElement.insertBefore(wrap, host);
       const ck = wrap.querySelector('#ck-travel');
+      if (localStorage.getItem('overviewShowTravel') === null) localStorage.setItem('overviewShowTravel','1');
       const pref = localStorage.getItem('overviewShowTravel') === '1';
       ck.checked = pref;
       ck.addEventListener('change', ()=>{ localStorage.setItem('overviewShowTravel', ck.checked?'1':'0'); try{ if (renderCharts.__last) renderCharts(...renderCharts.__last); }catch(_){} });
