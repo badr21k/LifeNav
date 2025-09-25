@@ -43,13 +43,32 @@
     <!-- Mode summaries -->
     <div class="ov-card" style="grid-column: span 6;">
       <div class="ov-title">Summary — Normal Mode</div>
-      <div class="ov-flex">
-        <span>Total</span>
-        <strong id="nm-total" class="sensitive-value">$0.00</strong>
+      <div class="container">
+        <div style="display:flex; gap:12px; align-items:center; justify-content:flex-end; margin-bottom:12px;">
+          <div>
+            <label for="ov-month" style="font-size:.85rem; color:var(--muted); display:block;">Month</label>
+            <input type="month" id="ov-month" style="padding:.35rem .5rem; border:1px solid var(--border); border-radius:6px; background:var(--card); color:var(--text);">
+          </div>
+          <div>
+            <label style="font-size:.85rem; color:var(--muted); display:block;">Status</label>
+            <span id="ov-status" class="badge" style="display:inline-block; padding:.25rem .5rem; border-radius:999px; background:var(--chip-bg); color:var(--muted);">—</span>
+          </div>
+        </div>
+        <div class="ov-flex">
+          <span>Total</span>
+          <strong id="nm-total" class="sensitive-value">$0.00</strong>
+        </div>
+        <div class="ov-flex" style="margin-top:.5rem;">
+          <span>Weekly Spent / Budget</span>
+          <strong>
+            <span id="nm-weekly-spent" class="sensitive-value">$0.00</span>
+            <span> / </span>
+            <span id="nm-weekly-budget" class="sv-exempt">$0.00</span>
+          </strong>
+        </div>
+        <div class="ov-progress"><div id="nm-weekly-progress"></div></div>
+        <div class="ov-sub" id="nm-weekly-sub">0% used</div>
       </div>
-      <div class="ov-flex" style="margin-top:.5rem;">
-        <span>Weekly Spent / Budget</span>
-        <strong>
           <span id="nm-weekly-spent" class="sensitive-value">$0.00</span>
           <span> / </span>
           <span id="nm-weekly-budget" class="sv-exempt">$0.00</span>
@@ -96,7 +115,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function(){
-  const ym = new Date().toISOString().slice(0,7);
+  let currentMonth = (localStorage.getItem('overviewMonth') || new Date().toISOString().slice(0,7));
   const fmt = (amt, cur) => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur||'CAD' }).format(amt||0);
   const CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>';
 
@@ -165,13 +184,15 @@
 
   async function init(){
     try {
-      try { await fetch('/overview_api/save', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN }, body: JSON.stringify({ month: ym }) }); } catch(_e){}
+      const month = currentMonth;
+      const monthInput = document.getElementById('ov-month'); if (monthInput) monthInput.value = month;
+      try { await fetch('/overview_api/save', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN }, body: JSON.stringify({ month }) }); } catch(_e){}
       let res = null; let data = {};
-      try { res = await getJSON(`/overview_api/get/${encodeURIComponent(ym)}`); data = res?.data || {}; } catch(_e){ data = {}; }
+      try { res = await getJSON(`/overview_api/get/${encodeURIComponent(month)}`); data = res?.data || {}; } catch(_e){ data = {}; }
       // Fallback if totals are missing or paycheck is 0 — pull from Finance summary directly
       if (!data.totals || (typeof data.totals.paycheck_month !== 'number')) {
         try {
-          const f = await getJSON(`/finance/api/summary?month=${encodeURIComponent(ym)}`);
+          const f = await getJSON(`/finance/api/summary?month=${encodeURIComponent(month)}`);
           data.totals = {
             income_month: (f?.income_cents||0)/100,
             spending_month: (f?.expenses_cents||0)/100,
@@ -179,7 +200,10 @@
             paycheck_month: (f?.paycheck_cents||0)/100
           };
           data.kpis = data.kpis || {};
+          setText('ov-status','Live');
         } catch(_e){}
+      } else {
+        setText('ov-status','Cached');
       }
       const currency = data.currency || 'CAD';
 
@@ -213,15 +237,26 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const monthInput = document.getElementById('ov-month');
+    if (monthInput) {
+      monthInput.value = currentMonth;
+      monthInput.addEventListener('change', ()=>{
+        const v = monthInput.value || new Date().toISOString().slice(0,7);
+        currentMonth = v; localStorage.setItem('overviewMonth', v);
+        init();
+      });
+    }
+    init();
+  });
   // Live updates when Finance posts a pay_update for this month
   try {
     const ch = new BroadcastChannel('lifenav_finance');
-    ch.onmessage = (ev)=>{ if (ev?.data?.type==='pay_update' && ev?.data?.month===ym) { init(); } };
+    ch.onmessage = (ev)=>{ if (ev?.data?.type==='pay_update' && ev?.data?.month===currentMonth) { init(); } };
   } catch(_e){}
   try {
     const ch2 = new BroadcastChannel('lifenav_spending');
-    ch2.onmessage = (ev)=>{ if (ev?.data?.type==='spend_update' && ev?.data?.month===ym) { init(); } };
+    ch2.onmessage = (ev)=>{ if (ev?.data?.type==='spend_update' && ev?.data?.month===currentMonth) { init(); } };
   } catch(_e){}
 })();
 </script>
