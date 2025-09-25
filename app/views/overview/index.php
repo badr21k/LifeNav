@@ -51,6 +51,10 @@
             <label for="ov-month" style="font-size:.85rem; color:var(--muted); display:block;">Month</label>
             <input type="month" id="ov-month" style="padding:.35rem .5rem; border:1px solid var(--border); border-radius:6px; background:var(--card); color:var(--text);">
           </div>
+          <div style="display:flex; gap:6px; align-items:flex-end; padding-top:18px;">
+            <button id="ov-prev" class="btn btn-sm" style="padding:.25rem .5rem; border:1px solid var(--border); border-radius:6px; background:var(--chip-bg); color:var(--text);">◀</button>
+            <button id="ov-next" class="btn btn-sm" style="padding:.25rem .5rem; border:1px solid var(--border); border-radius:6px; background:var(--chip-bg); color:var(--text);">▶</button>
+          </div>
           <div>
             <label style="font-size:.85rem; color:var(--muted); display:block;">Status</label>
             <span id="ov-status" class="badge" style="display:inline-block; padding:.25rem .5rem; border-radius:999px; background:var(--chip-bg); color:var(--muted);">—</span>
@@ -71,14 +75,6 @@
         <div class="ov-progress"><div id="nm-weekly-progress"></div></div>
         <div class="ov-sub" id="nm-weekly-sub">0% used</div>
       </div>
-          <span id="nm-weekly-spent" class="sensitive-value">$0.00</span>
-          <span> / </span>
-          <span id="nm-weekly-budget" class="sv-exempt">$0.00</span>
-        </strong>
-      </div>
-      <div class="ov-progress"><div id="nm-weekly-progress"></div></div>
-      <div class="ov-sub" id="nm-weekly-sub">0% used</div>
-    </div>
     <div class="ov-card" style="grid-column: span 6;">
       <div class="ov-title">Summary — Travel Mode</div>
       <div class="ov-flex">
