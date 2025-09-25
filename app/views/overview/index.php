@@ -135,8 +135,21 @@
   async function init(){
     try {
       try { await fetch('/overview_api/save', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN }, body: JSON.stringify({ month: ym }) }); } catch(_e){}
-      const res = await getJSON(`/overview_api/get/${encodeURIComponent(ym)}`);
-      const data = res?.data || {};
+      let res = null; let data = {};
+      try { res = await getJSON(`/overview_api/get/${encodeURIComponent(ym)}`); data = res?.data || {}; } catch(_e){ data = {}; }
+      // Fallback if totals are missing or paycheck is 0 — pull from Finance summary directly
+      if (!data.totals || (typeof data.totals.paycheck_month !== 'number')) {
+        try {
+          const f = await getJSON(`/finance/api/summary?month=${encodeURIComponent(ym)}`);
+          data.totals = {
+            income_month: (f?.income_cents||0)/100,
+            spending_month: (f?.expenses_cents||0)/100,
+            net_month: ((f?.income_cents||0)-(f?.expenses_cents||0))/100,
+            paycheck_month: (f?.paycheck_cents||0)/100
+          };
+          data.kpis = data.kpis || {};
+        } catch(_e){}
+      }
       const currency = data.currency || 'CAD';
 
       const t = data.totals || {};
@@ -169,6 +182,11 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
+  // Live updates when Finance posts a pay_update for this month
+  try {
+    const ch = new BroadcastChannel('lifenav_finance');
+    ch.onmessage = (ev)=>{ if (ev?.data?.type==='pay_update' && ev?.data?.month===ym) { init(); } };
+  } catch(_e){}
 })();
 </script>
 
